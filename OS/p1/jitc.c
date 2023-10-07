@@ -28,8 +28,9 @@
 
 /* research the above Needed API and design accordingly */
 
-struct jitc {
-	char size[5];
+struct jitc
+{
+  void *handle;
 };
 
 /**
@@ -41,9 +42,33 @@ struct jitc {
  * return: 0 on success, otherwise error
  */
 
-int jitc_compile(const char *input, const char *output) {
-  printf("%s-%s", input, output);
-  return 0;
+int jitc_compile(const char *input, const char *output)
+{
+  pid_t pid = fork();
+
+  if (pid == 0)
+  {
+    /* This block will be executed by child process */
+    execlp("gcc", "gcc", "-shared", "-fPIC", "-o", output, input, NULL);
+    exit(EXIT_FAILURE);
+  }
+  else if (pid < 0)
+  {
+    return -1; /*  Fork failed */
+  }
+  else
+  {
+    int status;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+    {
+      return 0; /* Compilation successful */
+    }
+    else
+    {
+      return -1; /* Compilation failed */
+    }
+  }
 }
 
 /**
@@ -55,14 +80,23 @@ int jitc_compile(const char *input, const char *output) {
  * return: an opaque handle or NULL on error
  */
 
-struct jitc *jitc_open(const char *pathname) {
+struct jitc *jitc_open(const char *pathname)
+{
+  void *handle = dlopen(pathname, RTLD_NOW);
   struct jitc *j = malloc(sizeof(struct jitc));
-  if(j == NULL) {
+
+  if (!handle)
+  {
     return NULL;
   }
-  strcpy(j->size, "hello");
-  printf("%s\n", j->size);
-  printf("%s\n", pathname);
+
+  if (!j)
+  {
+    dlclose(handle);
+    return NULL;
+  }
+
+  j->handle = handle;
   return j;
 }
 
@@ -74,9 +108,16 @@ struct jitc *jitc_open(const char *pathname) {
  * Note: jitc may be NULL
  */
 
-void jitc_close(struct jitc *jitc) {
-  printf("%s", jitc->size);
-  return;
+void jitc_close(struct jitc *jitc)
+{
+  if (jitc)
+  {
+    if (jitc->handle)
+    {
+      dlclose(jitc->handle);
+    }
+    free(jitc);
+  }
 }
 
 /**
@@ -87,7 +128,14 @@ void jitc_close(struct jitc *jitc) {
  * return: the memory address of the start of the symbol, or 0 on error
  */
 
-long jitc_lookup(struct jitc *jitc, const char *symbol) {
-  printf("%s, %s", jitc->size, symbol);
-  return 0;
+long jitc_lookup(struct jitc *jitc, const char *symbol)
+{
+  void *sym_address = dlsym(jitc->handle, symbol);
+
+  if (!jitc || !jitc->handle)
+  {
+    return 0;
+  }
+
+  return (long)sym_address;
 }
