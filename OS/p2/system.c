@@ -14,9 +14,23 @@
 
 /**
  * Needs:
+ *   nanosleep()
  *   unlink()
  *   vsnprintf()
+ *   sysconf()
  */
+
+void
+us_sleep(uint64_t us)
+{
+	struct timespec in, out;
+
+	in.tv_sec = (time_t)(us / 1000000);
+	in.tv_nsec = (long)(us % 1000000) * 1000;
+	while (nanosleep(&in, &out)) {
+		in = out;
+	}
+}
 
 void
 file_delete(const char *pathname)
@@ -47,4 +61,27 @@ size_t
 safe_strlen(const char *s)
 {
 	return s ? strlen(s) : 0;
+}
+
+size_t
+page_size(void)
+{
+	long size;
+
+	if ((0 >= (size = sysconf(_SC_PAGESIZE)))) {
+		EXIT("sysconf()");
+		return 0;
+	}
+	return (size_t)size;
+}
+
+void *
+memory_align(void *p, size_t n)
+{
+	size_t r;
+
+	if ((r = (size_t)p % n)) {
+		r = n - r;
+	}
+	return (void *)((char *)p + r);
 }

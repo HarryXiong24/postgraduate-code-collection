@@ -147,7 +147,7 @@ expr_unary(struct parser *parser)
 
 /**
  * expr_multiplicative_ : { [ '*' '/' ] expr_unary expr_multiplicative_ }
- *                      | âˆ…
+ *                      | ∅
  *
  * expr_multiplicative : expr_unary expr_multiplicative_
  */
@@ -203,7 +203,7 @@ expr_multiplicative(struct parser *parser)
 
 /**
  * expr_additive_ : { [ '+' '-' ] expr_multiplicative expr_additive_ }
- *                | âˆ…
+ *                | ∅
  *
  * expr_additive : expr_multiplicative expr_additive_
  */
