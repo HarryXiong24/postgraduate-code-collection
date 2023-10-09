@@ -45,26 +45,27 @@ struct jitc
 int jitc_compile(const char *input, const char *output)
 {
   pid_t pid = fork();
+
   char *args[7];
-  args[0] = "gcc";
-  args[1] = "-shared";
-  args[2] = "-fPIC";
-  args[3] = "-o";
-  args[4] = (char *)output;
-  args[5] = (char *)input;
-  args[6] = NULL;
 
   if (pid == 0)
   {
     /* This block will be executed by child process */
     /* execv(): apply gcc to compile the input C file */
     /* execlp("gcc", "gcc", "-shared", "-fPIC", "-o", output, input, NULL); */
+    args[0] = "gcc";
+    args[1] = "-shared";
+    args[2] = "-fPIC";
+    args[3] = "-o";
+    args[4] = (char *)output;
+    args[5] = (char *)input;
+    args[6] = NULL;
     execv("/usr/bin/gcc", args);
     exit(EXIT_FAILURE);
   }
   else if (pid < 0)
   {
-    return -1; /*  Fork failed */
+    return -1; /* Fork failed */
   }
   else
   {
@@ -93,15 +94,18 @@ int jitc_compile(const char *input, const char *output)
 struct jitc *jitc_open(const char *pathname)
 {
   void *handle = dlopen(pathname, RTLD_NOW);
-  struct jitc *j = malloc(sizeof(struct jitc));
+  struct jitc *j = NULL;
 
   if (!handle)
   {
+    dlerror();
     return NULL;
   }
 
+  j = (struct jitc *)malloc(sizeof(struct jitc));
   if (!j)
   {
+    dlerror();
     dlclose(handle);
     return NULL;
   }
@@ -140,12 +144,14 @@ void jitc_close(struct jitc *jitc)
 
 long jitc_lookup(struct jitc *jitc, const char *symbol)
 {
-  void *sym_address = dlsym(jitc->handle, symbol);
+  void *sym_address = NULL;
 
   if (!jitc || !jitc->handle)
   {
     return 0;
   }
+
+  sym_address = (char *)dlsym(jitc->handle, symbol);
 
   return (long)sym_address;
 }
