@@ -45,11 +45,21 @@ struct jitc
 int jitc_compile(const char *input, const char *output)
 {
   pid_t pid = fork();
+  char *args[7];
+  args[0] = "gcc";
+  args[1] = "-shared";
+  args[2] = "-fPIC";
+  args[3] = "-o";
+  args[4] = (char *)output;
+  args[5] = (char *)input;
+  args[6] = NULL;
 
   if (pid == 0)
   {
     /* This block will be executed by child process */
-    execlp("gcc", "gcc", "-shared", "-fPIC", "-o", output, input, NULL);
+    /* execv(): apply gcc to compile the input C file */
+    /* execlp("gcc", "gcc", "-shared", "-fPIC", "-o", output, input, NULL); */
+    execv("/usr/bin/gcc", args);
     exit(EXIT_FAILURE);
   }
   else if (pid < 0)

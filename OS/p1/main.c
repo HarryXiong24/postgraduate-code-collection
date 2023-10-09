@@ -116,6 +116,7 @@ int main(int argc, char *argv[])
 		TRACE("fopen()");
 		return -1;
 	}
+	/* generate evaluate function */
 	generate(parser_dag(parser), file);
 	parser_close(parser);
 	fclose(file);
@@ -133,7 +134,7 @@ int main(int argc, char *argv[])
 	/* dynamic load */
 
 	if (!(jitc = jitc_open(SOFILE)) ||
-			!(fnc = (evaluate_t)jitc_lookup(jitc, "evaluate")))
+			!(fnc = (evaluate_t)jitc_lookup(jitc, "evaluate"))) /* find evaluate function */
 	{
 		file_delete(SOFILE);
 		jitc_close(jitc);
