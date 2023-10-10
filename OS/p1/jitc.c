@@ -52,7 +52,6 @@ int jitc_compile(const char *input, const char *output)
   {
     /* This block will be executed by child process */
     /* execv(): apply gcc to compile the input C file */
-    /* execlp("gcc", "gcc", "-shared", "-fPIC", "-o", output, input, NULL); */
     args[0] = "gcc";
     args[1] = "-shared";
     args[2] = "-fPIC";
@@ -61,7 +60,7 @@ int jitc_compile(const char *input, const char *output)
     args[5] = (char *)input;
     args[6] = NULL;
     execv("/usr/bin/gcc", args);
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
   }
   else if (pid < 0)
   {
@@ -73,11 +72,11 @@ int jitc_compile(const char *input, const char *output)
     waitpid(pid, &status, 0);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
     {
-      return 0; /* Compilation successful */
+      return 0; /* Compile successful */
     }
     else
     {
-      return -1; /* Compilation failed */
+      return -1; /* Compile failed */
     }
   }
 }
@@ -93,19 +92,19 @@ int jitc_compile(const char *input, const char *output)
 
 struct jitc *jitc_open(const char *pathname)
 {
-  void *handle = dlopen(pathname, RTLD_NOW);
+  char path[100] = "./";
+  void *handle;
   struct jitc *j = NULL;
 
+  handle = dlopen(strcat(path, pathname), RTLD_NOW);
   if (!handle)
   {
-    dlerror();
     return NULL;
   }
 
   j = (struct jitc *)malloc(sizeof(struct jitc));
   if (!j)
   {
-    dlerror();
     dlclose(handle);
     return NULL;
   }
