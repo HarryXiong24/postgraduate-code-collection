@@ -28,6 +28,7 @@
 
 /* research the above Needed API and design accordingly */
 
+/* Define structure jitc */
 struct jitc
 {
   void *handle;
@@ -41,13 +42,13 @@ struct jitc
  *
  * return: 0 on success, otherwise error
  */
-
 int jitc_compile(const char *input, const char *output)
 {
-  pid_t pid = fork();
-
   char *args[7];
-
+  pid_t pid = fork();
+  /*
+    Create a new child process, When execv() functions are called, it replaces the current process's image with the specified new program. This means that once execv is called, the currently running program no longer continues execution but is replaced by GCC. In order for the original program to continue running and wait for GCC to complete compilation, execv needs to be called in the child process.
+  */
   if (pid == 0)
   {
     /* This block will be executed by child process */
@@ -59,6 +60,7 @@ int jitc_compile(const char *input, const char *output)
     args[4] = (char *)output;
     args[5] = (char *)input;
     args[6] = NULL;
+    /* Compile input file to a dynamically loadable module */
     execv("/usr/bin/gcc", args);
     exit(EXIT_SUCCESS);
   }
@@ -69,6 +71,7 @@ int jitc_compile(const char *input, const char *output)
   else
   {
     int status;
+    /* Use waitpid() to wait for the child process (GCC compiler) to complete. */
     waitpid(pid, &status, 0);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
     {
@@ -89,19 +92,25 @@ int jitc_compile(const char *input, const char *output)
  *
  * return: an opaque handle or NULL on error
  */
-
 struct jitc *jitc_open(const char *pathname)
 {
-  char path[100] = "./";
+  char relative_path[100] = "./";
   void *handle;
   struct jitc *j = NULL;
 
-  handle = dlopen(strcat(path, pathname), RTLD_NOW);
+  /*
+    dlopen() function need to give a relative path, otherwise it will find the file in the library function first
+  */
+  /*
+    dlopen() is a function to load a dynamically loadable module. So variable tag needed to be stored, tag is pointed to the dlopen result.
+  */
+  handle = dlopen(strcat(relative_path, pathname), RTLD_NOW);
   if (!handle)
   {
     return NULL;
   }
 
+  /* Initialize jitc */
   j = (struct jitc *)malloc(sizeof(struct jitc));
   if (!j)
   {
@@ -129,6 +138,7 @@ void jitc_close(struct jitc *jitc)
     {
       dlclose(jitc->handle);
     }
+    /* Free memory */
     free(jitc);
   }
 }
@@ -141,6 +151,7 @@ void jitc_close(struct jitc *jitc)
  * return: the memory address of the start of the symbol, or 0 on error
  */
 
+/* void *dlsym(void *handle, const char *symbol); */
 long jitc_lookup(struct jitc *jitc, const char *symbol)
 {
   void *sym_address = NULL;
@@ -150,6 +161,10 @@ long jitc_lookup(struct jitc *jitc, const char *symbol)
     return 0;
   }
 
+  /*
+    Find the symbol named "evaluate" to get the address of the function,
+    and convert the address to the correct function pointer type and assign it to fnc
+  */
   sym_address = (char *)dlsym(jitc->handle, symbol);
 
   return (long)sym_address;
