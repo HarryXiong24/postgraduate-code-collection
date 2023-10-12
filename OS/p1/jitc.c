@@ -44,7 +44,7 @@ struct jitc
  */
 int jitc_compile(const char *input, const char *output)
 {
-  char *args[7];
+  char *args[12];
   pid_t pid = fork();
   /*
     Create a new child process, When execv() functions are called, it replaces the current process's image with the specified new program. This means that once execv is called, the currently running program no longer continues execution but is replaced by GCC. In order for the original program to continue running and wait for GCC to complete compilation, execv needs to be called in the child process.
@@ -59,7 +59,12 @@ int jitc_compile(const char *input, const char *output)
     args[3] = "-o";
     args[4] = (char *)output;
     args[5] = (char *)input;
-    args[6] = NULL;
+    args[6] = "main.o"; /* Link with the main object file */
+    args[7] = "parser.o";
+    args[8] = "system.o";
+    args[9] = "lexer.o";
+    args[10] = "jitc.o";
+    args[11] = NULL;
     /* Compile input file to a dynamically loadable module */
     execv("/usr/bin/gcc", args);
     exit(EXIT_SUCCESS);

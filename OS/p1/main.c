@@ -74,12 +74,19 @@ reflect(const struct parser_dag *dag, FILE *file)
 	}
 }
 
+double sigmoid(double x)
+{
+	return x;
+}
+
 static void
 generate(const struct parser_dag *dag, FILE *file)
 {
+	fprintf(file, "extern double sigmoid(double x);\n");
 	fprintf(file, "double evaluate(void) {\n");
 	reflect(dag, file);
-	fprintf(file, "return t%d;\n}\n", dag->id);
+	/* fprintf(file, "return t%d;\n}\n", dag->id); */
+	fprintf(file, "return sigmoid(t%d);\n}\n", dag->id);
 }
 
 typedef double (*evaluate_t)(void);
