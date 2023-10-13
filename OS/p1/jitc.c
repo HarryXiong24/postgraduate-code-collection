@@ -37,6 +37,8 @@ struct jitc
 /**
  * Compiles a C program into a dynamically loadable module.
  *
+ * C -> .so file
+ *
  * input : the file pathname of the C program
  * output: the file pathname of the dynamically loadable module
  *
@@ -94,6 +96,8 @@ int jitc_compile(const char *input, const char *output)
  * Loads a dynamically loadable module into the calling process' memory for
  * execution.
  *
+ * open .so file
+ *
  * pathname: the file pathname of the dynamically loadable module
  *
  * return: an opaque handle or NULL on error
@@ -108,7 +112,7 @@ struct jitc *jitc_open(const char *pathname)
     dlopen() function need to give a relative path, otherwise it will find the file in the library function first
   */
   /*
-    dlopen() is a function to load a dynamically loadable module. So variable tag needed to be stored, tag is pointed to the dlopen result.
+    dlopen() is a function to load a dynamically loadable module(.so file). So variable tag needed to be stored, tag is pointed to the dlopen file.
   */
   handle = dlopen(strcat(relative_path, pathname), RTLD_NOW);
   if (!handle)
@@ -124,6 +128,7 @@ struct jitc *jitc_open(const char *pathname)
     return NULL;
   }
 
+  /* store the tag */
   j->handle = handle;
   return j;
 }
