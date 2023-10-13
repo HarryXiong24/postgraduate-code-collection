@@ -10,6 +10,7 @@
 #include "jitc.h"
 #include "parser.h"
 #include "system.h"
+#include "math.h"
 
 /* export LD_LIBRARY_PATH=. */
 
@@ -76,7 +77,8 @@ reflect(const struct parser_dag *dag, FILE *file)
 
 double sigmoid(double x)
 {
-	return x;
+	/* reference https://en.wikipedia.org/wiki/Sigmoid_function */
+	return 1.0 / (1.0 + exp(-x));
 }
 
 static void
