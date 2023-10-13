@@ -10,7 +10,7 @@
 #include "jitc.h"
 #include "parser.h"
 #include "system.h"
-#include "math.h"
+#include <math.h>
 
 /* export LD_LIBRARY_PATH=. */
 

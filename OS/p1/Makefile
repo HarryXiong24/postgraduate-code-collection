@@ -16,7 +16,7 @@ OBJS  := $(SRCS:.c=.o)
 
 all: $(OBJS)
 	@echo "[LN]" $(DEST)
-	@$(CC) -o $(DEST) $(OBJS) $(LDLIBS)
+	@$(CC) -o $(DEST) $(OBJS) -lm
 
 %.o: %.c
 	@echo "[CC]" $<
