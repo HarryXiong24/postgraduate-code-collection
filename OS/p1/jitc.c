@@ -106,7 +106,7 @@ struct jitc *jitc_open(const char *pathname)
 {
   char relative_path[100] = "./";
   void *handle;
-  struct jitc *j = NULL;
+  struct jitc *jit = NULL;
 
   /*
     dlopen() function need to give a relative path, otherwise it will find the file in the library function first
@@ -121,16 +121,16 @@ struct jitc *jitc_open(const char *pathname)
   }
 
   /* Initialize jitc */
-  j = (struct jitc *)malloc(sizeof(struct jitc));
-  if (!j)
+  jit = (struct jitc *)malloc(sizeof(struct jitc));
+  if (!jit)
   {
     dlclose(handle);
     return NULL;
   }
 
   /* store the tag */
-  j->handle = handle;
-  return j;
+  jit->handle = handle;
+  return jit;
 }
 
 /**
@@ -149,9 +149,10 @@ void jitc_close(struct jitc *jitc)
     {
       dlclose(jitc->handle);
     }
-    /* Free memory */
-    free(jitc);
+    memset(jitc, 0, sizeof(struct jitc));
   }
+  /* Free memory */
+  free(jitc);
 }
 
 /**
