@@ -23,109 +23,129 @@
 
 /* research the above Needed API and design accordingly */
 
-#define MAX_THREADS 32
+/* Define a structure for thread */
+#define STACK_SIZE 4096
 
 typedef struct Thread
 {
+  jmp_buf ctx;
+  enum
+  {
+    STATUS_,
+    STATUS_RUNNING,
+    STATUS_SLEEPING,
+    STATUS_TERMINATED
+  } status;
+  struct
+  {
+    void *memory_start;
+    void *memory_end;
+  } stack;
   scheduler_fnc_t fnc;
-  void *arg;
-  jmp_buf context;
+  char *arg;
   struct Thread *next;
 } Thread;
 
-static Thread *current_thread = NULL;
-static Thread *threads = NULL;
-static jmp_buf main_context;
-static int num_threads = 0;
+static struct
+{
+  Thread *head;
+  Thread *thread;
+  jmp_buf ctx;
+} state;
 
 int scheduler_create(scheduler_fnc_t fnc, void *arg)
 {
-  Thread *thread = NULL;
-  if (num_threads >= MAX_THREADS)
+  Thread *new_thread = (Thread *)malloc(sizeof(Thread));
+  if (!new_thread)
   {
-    return -1;
+    return -1; /* Memory allocation failed */
   }
 
-  thread = (Thread *)malloc(sizeof(Thread));
-  if (!thread)
+  /* Allocate memory for the stack */
+  new_thread->stack.memory_start = malloc(STACK_SIZE);
+  if (!new_thread->stack.memory_start)
   {
-    return -1;
+    free(new_thread);
+    return -1; /* Memory allocation for stack failed */
   }
+  new_thread->stack.memory_end = (char *)new_thread->stack.memory_start + STACK_SIZE;
 
-  thread->fnc = fnc;
-  thread->arg = arg;
-  thread->next = NULL;
+  /* Set the thread's function and initial status */
+  new_thread->fnc = fnc;
+  new_thread->arg = arg;
+  new_thread->status = STATUS_;
 
-  if (!threads)
+  /* Link the new thread to the list */
+  if (!state.head)
   {
-    threads = thread;
+    state.head = (Thread *)new_thread;
   }
   else
   {
-    Thread *tmp = threads;
-    while (tmp->next)
+    Thread *temp = state.head;
+    while (temp->next)
     {
-      tmp = tmp->next;
+      temp = temp->next;
     }
-    tmp->next = thread;
+    temp->next = new_thread;
   }
+  new_thread->next = NULL;
 
-  num_threads++;
-  return 0;
+  return 0; /* Successful creation */
+}
+
+static inline void thread_start(Thread *thread)
+{
+  thread->fnc(thread->arg);           /* Call the thread function */
+  thread->status = STATUS_TERMINATED; /* Mark thread as terminated */
+  scheduler_yield();                  /* Yield to the next thread */
 }
 
 void scheduler_execute(void)
 {
-  if (!threads)
+  if (setjmp(state.ctx) == 0)
   {
-    return;
+    /* Save the scheduler's context and jump to the first thread */
+    state.thread = state.head;
+    if (state.thread)
+    {
+      /* Set up the thread's stack and call thread_start */
+      char *stack_top = (char *)memory_align(state.thread->stack.memory_end, 16);
+      __asm__ volatile(
+          "mov sp, %0\n"
+          "mov x0, %1\n"
+          "bl thread_start"
+          :
+          : "r"(stack_top), "r"(state.thread)
+          : "memory");
+    }
   }
 
-  if (setjmp(main_context) == 0)
+  /* Cleanup terminated threads */
+  while (state.head && state.head->status == STATUS_TERMINATED)
   {
-    current_thread = threads;
-    longjmp(current_thread->context, 1);
-  }
-  else
-  {
-    while (threads)
-    {
-      Thread *tmp = threads;
-      threads = threads->next;
-      free(tmp);
-    }
+    Thread *temp = state.head;
+    state.head = state.head->next;
+    free(temp->stack.memory_start);
+    free(temp);
   }
 }
 
 void scheduler_yield(void)
 {
-  while (num_threads > 0)
+  if (setjmp(state.thread->ctx) == 0)
   {
-    if (setjmp(current_thread->context) == 0)
+    /* Save the current thread's context */
+    state.thread = state.thread->next;
+    if (!state.thread)
     {
-      current_thread = current_thread->next ? current_thread->next : threads;
-      longjmp(current_thread->context, 1);
+      /* If there's no next thread, jump back to the scheduler */
+      longjmp(state.ctx, 1);
     }
     else
     {
-      Thread *tmp = NULL;
-      current_thread->fnc(current_thread->arg);
-      tmp = current_thread;
-      if (current_thread->next)
-      {
-        current_thread = current_thread->next;
-      }
-      else
-      {
-        current_thread = threads;
-      }
-      free(tmp);
-      num_threads--;
+      /* Otherwise, jump to the next thread */
+      longjmp(state.thread->ctx, 1);
     }
-  }
-
-  if (num_threads == 0)
-  {
-    longjmp(main_context, 1);
   }
 }

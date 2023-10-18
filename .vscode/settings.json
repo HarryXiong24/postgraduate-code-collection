@@ -11,7 +11,8 @@
     "*.wxs": "javascript",
     "*.vue": "vue",
     "*.mpx": "vue",
-    "*.jsx": "javascriptreact"
+    "*.jsx": "javascriptreact",
+    "__threading_support": "c"
   },
   "emmet.includeLanguages": {
     "wxml": "html"
@@ -165,7 +166,8 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8"
   },
-  "python.formatting.provider": "none"
+  "python.formatting.provider": "none",
+  "C_Cpp.errorSquiggles": "disabled"
   // "devops.accessToken": "",
   // "devops.accountId": "harryxiong",
   // "devops.agentPath": "Users/brooklin/agent"
