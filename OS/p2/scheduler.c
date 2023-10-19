@@ -28,7 +28,6 @@
 
 typedef struct Thread
 {
-  jmp_buf ctx;
   enum
   {
     STATUS_,
@@ -41,9 +40,10 @@ typedef struct Thread
     void *memory_start;
     void *memory_end;
   } stack;
+  jmp_buf ctx;
+  struct Thread *next;
   scheduler_fnc_t fnc;
   char *arg;
-  struct Thread *next;
 } Thread;
 
 static struct
@@ -53,99 +53,193 @@ static struct
   jmp_buf ctx;
 } state;
 
-int scheduler_create(scheduler_fnc_t fnc, void *arg)
+void destroy(void)
 {
-  Thread *new_thread = (Thread *)malloc(sizeof(Thread));
-  if (!new_thread)
-  {
-    return -1; /* Memory allocation failed */
-  }
+  Thread *thread = state.head;
+  Thread *prev = NULL;
 
-  /* Allocate memory for the stack */
-  new_thread->stack.memory_start = malloc(STACK_SIZE);
-  if (!new_thread->stack.memory_start)
+  while (thread)
   {
-    free(new_thread);
-    return -1; /* Memory allocation for stack failed */
-  }
-  new_thread->stack.memory_end = (char *)new_thread->stack.memory_start + STACK_SIZE;
-
-  /* Set the thread's function and initial status */
-  new_thread->fnc = fnc;
-  new_thread->arg = arg;
-  new_thread->status = STATUS_;
-
-  /* Link the new thread to the list */
-  if (!state.head)
-  {
-    state.head = (Thread *)new_thread;
-  }
-  else
-  {
-    Thread *temp = state.head;
-    while (temp->next)
+    if (thread->status == STATUS_TERMINATED)
     {
-      temp = temp->next;
-    }
-    temp->next = new_thread;
-  }
-  new_thread->next = NULL;
-
-  return 0; /* Successful creation */
-}
-
-static inline void thread_start(Thread *thread)
-{
-  thread->fnc(thread->arg);           /* Call the thread function */
-  thread->status = STATUS_TERMINATED; /* Mark thread as terminated */
-  scheduler_yield();                  /* Yield to the next thread */
-}
-
-void scheduler_execute(void)
-{
-  if (setjmp(state.ctx) == 0)
-  {
-    /* Save the scheduler's context and jump to the first thread */
-    state.thread = state.head;
-    if (state.thread)
-    {
-      /* Set up the thread's stack and call thread_start */
-      char *stack_top = (char *)memory_align(state.thread->stack.memory_end, 16);
-      __asm__ volatile(
-          "mov sp, %0\n"
-          "mov x0, %1\n"
-          "bl thread_start"
-          :
-          : "r"(stack_top), "r"(state.thread)
-          : "memory");
-    }
-  }
-
-  /* Cleanup terminated threads */
-  while (state.head && state.head->status == STATUS_TERMINATED)
-  {
-    Thread *temp = state.head;
-    state.head = state.head->next;
-    free(temp->stack.memory_start);
-    free(temp);
-  }
-}
-
-void scheduler_yield(void)
-{
-  if (setjmp(state.thread->ctx) == 0)
-  {
-    /* Save the current thread's context */
-    state.thread = state.thread->next;
-    if (!state.thread)
-    {
-      /* If there's no next thread, jump back to the scheduler */
-      longjmp(state.ctx, 1);
+      if (prev)
+      {
+        prev->next = thread->next;
+        free(thread->stack.memory_start);
+        free(thread);
+        thread = prev->next;
+      }
+      else
+      {
+        state.head = thread->next;
+        free(thread->stack.memory_start);
+        free(thread);
+        thread = state.head;
+      }
     }
     else
     {
-      /* Otherwise, jump to the next thread */
-      longjmp(state.thread->ctx, 1);
+      prev = thread;
+      thread = thread->next;
     }
   }
+}
+
+Thread *thread_candidate(void)
+{
+  Thread *candidate;
+
+  if (!state.thread)
+    return NULL;
+
+  candidate = state.thread->next;
+  while (candidate->status == STATUS_TERMINATED)
+  {
+    state.thread->next = candidate->next;
+    destroy();
+    candidate = state.thread->next;
+    if (candidate == state.thread)
+    {
+      if (state.thread->status == STATUS_TERMINATED)
+      {
+        destroy();
+        return NULL;
+      }
+      break;
+    }
+  }
+  return candidate;
+}
+
+void schedule(void)
+{
+  /* call thread_candidate() to pick up a thread, if not exist return */
+
+  /* state.thread = thread */
+
+  /* thread.status = running */
+
+  /* longjmp(thread -> ctx) */
+  if (setjmp(state.thread->ctx) == 0)
+  {
+    state.thread = thread_candidate();
+    if (state.thread)
+      longjmp(state.thread->ctx, 1);
+    else
+      longjmp(state.ctx, 1);
+  }
+}
+
+/**
+ * Creates a new user thread.
+ *
+ * fnc: the start function of the user thread (see scheduler_fnc_t)
+ * arg: a pass-through pointer defining the context of the user thread
+ *
+ * return: 0 on success, otherwise error
+ */
+
+int scheduler_create(scheduler_fnc_t fnc, void *arg)
+{
+  /* figure out what's the page size */
+
+  /* allocate thread struct and initialize */
+
+  /* Allocate memory for the stack */
+
+  /* link the new thread to state head */
+
+  /* return */
+
+  uint64_t rsp;
+  Thread *thread = (Thread *)malloc(sizeof(Thread));
+
+  if (!thread)
+  {
+    EXIT("malloc()");
+    return -1;
+  }
+
+  thread->stack.memory_start = malloc(8 * page_size());
+  if (!thread->stack.memory_start)
+  {
+    free(thread);
+    EXIT("malloc()");
+    return -1;
+  }
+  thread->stack.memory_end = (char *)memory_align((char *)thread->stack.memory_start + 8 * page_size(), page_size());
+
+  thread->fnc = fnc;
+  thread->arg = arg;
+  thread->status = STATUS_RUNNING;
+
+  if (setjmp(thread->ctx) != 0)
+  {
+    thread->fnc(thread->arg);
+    thread->status = STATUS_TERMINATED;
+    schedule();
+  }
+
+  rsp = (uint64_t)memory_align(thread->stack.memory_end, page_size());
+  __asm__ volatile("mov %[rs], %%rsp \n"
+                   : [rs] "+r"(rsp)::);
+
+  if (!state.head)
+  {
+    state.head = thread;
+    thread->next = thread;
+  }
+  else
+  {
+    thread->next = state.head->next;
+    state.head->next = thread;
+    state.head = thread;
+  }
+
+  return 0;
+}
+
+/**
+ * Called to execute the user threads previously created by calling
+ * scheduler_create().
+ *
+ * Notes:
+ *   * This function should be called after a sequence of 0 or more
+ *     scheduler_create() calls.
+ *   * This function returns after all user threads (previously created)
+ *     have terminated.
+ *   * This function is not re-enterant.
+ */
+
+void scheduler_execute(void)
+{
+  /* check point -> state ctx */
+
+  /* schedule(), let a thread run */
+
+  /* destroy() */
+
+  if (!state.head)
+  {
+    return;
+  }
+
+  state.thread = state.head;
+  if (setjmp(state.ctx) == 0)
+  {
+    longjmp(state.thread->ctx, 1);
+  }
+}
+
+/**
+ * Called from within a user thread to yield the CPU to another user thread.
+ */
+void scheduler_yield(void)
+{
+  /* check point about the state thread if it is ctx */
+
+  /* if state.thread -> status = sleeping */
+
+  /* longjmp(state.ctx) */
+  schedule();
 }
