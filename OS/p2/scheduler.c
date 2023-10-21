@@ -72,24 +72,16 @@ void destroy(void)
 thread *thread_candidate(void)
 {
   thread *candidate = state.current_thread ? state.current_thread : state.head;
-  while (candidate != NULL)
-  {
-    if (candidate->status == STATUS_SLEEPING || candidate->status == STATUS_)
-    {
-      return candidate;
-    }
-    candidate = candidate->next;
-  }
+  thread *start = candidate; /* Save the starting point */
 
-  candidate = state.head;
-  while (candidate != state.current_thread)
+  do
   {
     if (candidate->status == STATUS_SLEEPING || candidate->status == STATUS_)
     {
       return candidate;
     }
-    candidate = candidate->next;
-  }
+    candidate = candidate->next ? candidate->next : state.head;
+  } while (candidate != start);
 
   return NULL;
 }
@@ -121,6 +113,7 @@ void schedule(void)
   else
   {
     state.current_thread->fnc(state.current_thread->arg);
+    state.current_thread->status = STATUS_TERMINATED;
     scheduler_yield();
   }
 }
