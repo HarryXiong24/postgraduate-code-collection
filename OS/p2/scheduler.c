@@ -55,78 +55,95 @@ static struct
 
 void destroy(void)
 {
-  Thread *thread = state.head;
+  Thread *current = state.head;
   Thread *prev = NULL;
 
-  while (thread)
+  while (current)
   {
-    if (thread->status == STATUS_TERMINATED)
+    if (current->status == STATUS_TERMINATED)
     {
       if (prev)
       {
-        prev->next = thread->next;
-        free(thread->stack.memory_start);
-        free(thread);
-        thread = prev->next;
+        prev->next = current->next;
       }
       else
       {
-        state.head = thread->next;
-        free(thread->stack.memory_start);
-        free(thread);
-        thread = state.head;
+        state.head = current->next;
+      }
+      free(current->stack.memory_start);
+      free(current);
+      if (prev)
+      {
+        current = prev->next;
+      }
+      else
+      {
+        current = state.head;
       }
     }
     else
     {
-      prev = thread;
-      thread = thread->next;
+      prev = current;
+      current = current->next;
     }
   }
 }
 
 Thread *thread_candidate(void)
 {
-  Thread *candidate;
+  Thread *candidate = NULL;
 
   if (!state.thread)
-    return NULL;
-
-  candidate = state.thread->next;
-  while (candidate->status == STATUS_TERMINATED)
   {
-    state.thread->next = candidate->next;
-    destroy();
-    candidate = state.thread->next;
-    if (candidate == state.thread)
-    {
-      if (state.thread->status == STATUS_TERMINATED)
-      {
-        destroy();
-        return NULL;
-      }
-      break;
-    }
+    return NULL;
   }
+
+  candidate = state.head;
+
+  while (candidate && candidate->status != STATUS_)
+  {
+    candidate = candidate->next;
+  }
+
   return candidate;
 }
 
 void schedule(void)
 {
   /* call thread_candidate() to pick up a thread, if not exist return */
-
   /* state.thread = thread */
-
   /* thread.status = running */
-
   /* longjmp(thread -> ctx) */
-  if (setjmp(state.thread->ctx) == 0)
+
+  Thread *candidate = thread_candidate();
+
+  if (!candidate)
   {
-    state.thread = thread_candidate();
-    if (state.thread)
-      longjmp(state.thread->ctx, 1);
+    longjmp(state.ctx, 1); /* Return to scheduler_execute if no candidate */
+  }
+
+  state.thread = candidate;
+
+  if (candidate->status == STATUS_)
+  {
+    if (setjmp(candidate->ctx) == 0)
+    {
+      uint64_t rsp = (uint64_t)memory_align(candidate->stack.memory_end, page_size());
+      __asm__ volatile("mov %[rs], %%rsp \n"
+                       : [rs] "+r"(rsp)::);
+      candidate->status = STATUS_RUNNING;
+      longjmp(candidate->ctx, 1);
+    }
     else
-      longjmp(state.ctx, 1);
+    {
+      state.thread->fnc(state.thread->arg);
+      state.thread->status = STATUS_TERMINATED;
+      scheduler_yield();
+    }
+  }
+  else
+  {
+    longjmp(candidate->ctx, 1);
   }
 }
 
@@ -142,59 +159,42 @@ void schedule(void)
 int scheduler_create(scheduler_fnc_t fnc, void *arg)
 {
   /* figure out what's the page size */
-
   /* allocate thread struct and initialize */
-
   /* Allocate memory for the stack */
-
   /* link the new thread to state head */
-
   /* return */
 
-  uint64_t rsp;
-  Thread *thread = (Thread *)malloc(sizeof(Thread));
+  Thread *new_thread;
+  void *stack_memory;
+  size_t p_size;
 
-  if (!thread)
+  p_size = page_size();
+  if (p_size == 0)
   {
-    EXIT("malloc()");
     return -1;
   }
 
-  thread->stack.memory_start = malloc(8 * page_size());
-  if (!thread->stack.memory_start)
+  new_thread = (Thread *)malloc(sizeof(Thread));
+  if (!new_thread)
   {
-    free(thread);
-    EXIT("malloc()");
     return -1;
   }
-  thread->stack.memory_end = (char *)memory_align((char *)thread->stack.memory_start + 8 * page_size(), page_size());
 
-  thread->fnc = fnc;
-  thread->arg = arg;
-  thread->status = STATUS_RUNNING;
+  new_thread->status = STATUS_;
+  new_thread->fnc = fnc;
+  new_thread->arg = arg;
 
-  if (setjmp(thread->ctx) != 0)
+  stack_memory = malloc(STACK_SIZE + p_size);
+  if (!stack_memory)
   {
-    thread->fnc(thread->arg);
-    thread->status = STATUS_TERMINATED;
-    schedule();
+    free(new_thread);
+    return -1;
   }
+  new_thread->stack.memory_start = memory_align(stack_memory, p_size);
+  new_thread->stack.memory_end = (char *)new_thread->stack.memory_start + STACK_SIZE;
 
-  rsp = (uint64_t)memory_align(thread->stack.memory_end, page_size());
-  __asm__ volatile("mov %[rs], %%rsp \n"
-                   : [rs] "+r"(rsp)::);
-
-  if (!state.head)
-  {
-    state.head = thread;
-    thread->next = thread;
-  }
-  else
-  {
-    thread->next = state.head->next;
-    state.head->next = thread;
-    state.head = thread;
-  }
+  new_thread->next = state.head;
+  state.head = new_thread;
 
   return 0;
 }
@@ -214,21 +214,22 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
 void scheduler_execute(void)
 {
   /* check point -> state ctx */
-
   /* schedule(), let a thread run */
-
   /* destroy() */
 
-  if (!state.head)
-  {
-    return;
-  }
-
-  state.thread = state.head;
   if (setjmp(state.ctx) == 0)
   {
-    longjmp(state.thread->ctx, 1);
+    schedule();
   }
+  else
+  {
+    if (thread_candidate() != NULL) /* Check if there are more threads to run */
+    {
+      schedule();
+    }
+  }
+
+  destroy();
 }
 
 /**
@@ -237,9 +238,13 @@ void scheduler_execute(void)
 void scheduler_yield(void)
 {
   /* check point about the state thread if it is ctx */
-
   /* if state.thread -> status = sleeping */
-
   /* longjmp(state.ctx) */
-  schedule();
+  if (setjmp(state.thread->ctx) == 0)
+  {
+    if (state.thread->status == STATUS_SLEEPING)
+    {
+      longjmp(state.ctx, 1);
+    }
+  }
 }
