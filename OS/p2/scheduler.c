@@ -22,10 +22,6 @@
  */
 
 /* research the above Needed API and design accordingly */
-
-/* Define a structure for thread */
-#define STACK_SIZE 4096
-
 typedef struct Thread
 {
   enum
@@ -56,14 +52,12 @@ static struct
 void destroy(void)
 {
   thread *current = state.head;
-  thread *prev = NULL;
   while (current != NULL)
   {
-    prev = current;
+    thread *next = current->next;
     free(current->stack.memory_);
-    free(current->stack.memory);
     free(current);
-    current = prev->next;
+    current = next;
   }
   state.head = NULL;
   state.current_thread = NULL;
@@ -97,25 +91,12 @@ void schedule(void)
 
   if (!candidate)
   {
-    longjmp(state.ctx, 1); /* Return to scheduler_execute if no candidate */
+    return;
   }
 
   state.current_thread = candidate;
-
-  if (setjmp(candidate->ctx) == 0)
-  {
-    uint64_t rsp = (uint64_t)memory_align(candidate->stack.memory, page_size());
-    __asm__ volatile("mov %[rs], %%rsp \n"
-                     : [rs] "+r"(rsp)::);
-    candidate->status = STATUS_RUNNING;
-    longjmp(candidate->ctx, 1);
-  }
-  else
-  {
-    state.current_thread->fnc(state.current_thread->arg);
-    state.current_thread->status = STATUS_TERMINATED;
-    scheduler_yield();
-  }
+  candidate->status = STATUS_RUNNING;
+  longjmp(candidate->ctx, 1); /* Switch to the candidate thread */
 }
 
 /**
@@ -154,6 +135,13 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
   new_thread->stack.memory_ = malloc(2 * p_size);
   new_thread->stack.memory = memory_align(new_thread->stack.memory_, p_size);
 
+  if (setjmp(new_thread->ctx) == 0)
+  {
+    uint64_t rsp = (uint64_t)memory_align(new_thread->stack.memory, 2 * page_size());
+    __asm__ volatile("mov %[rs], %%rsp \n"
+                     : [rs] "+r"(rsp)::);
+  }
+
   new_thread->next = state.head;
   state.head = new_thread;
 
@@ -171,7 +159,6 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
  *     have terminated.
  *   * This function is not re-enterant.
  */
-
 void scheduler_execute(void)
 {
   /* check point -> state ctx */
@@ -180,13 +167,6 @@ void scheduler_execute(void)
   if (setjmp(state.ctx) == 0)
   {
     schedule();
-  }
-  else
-  {
-    if (thread_candidate() != NULL) /* Check if there are more threads to run */
-    {
-      schedule();
-    }
   }
 
   destroy();
@@ -198,17 +178,13 @@ void scheduler_execute(void)
 void scheduler_yield(void)
 {
   /* check point about the state thread if it is ctx */
-  /* if state.thread -> status = sleeping */
+  /* state.thread -> status = sleeping */
   /* longjmp(state.ctx) */
   if (setjmp(state.current_thread->ctx) == 0)
   {
-    if (state.current_thread->status == STATUS_SLEEPING)
-    {
-      longjmp(state.ctx, 1);
-    }
-    else
-    {
-      schedule();
-    }
+
+    state.current_thread->status = STATUS_SLEEPING;
+    longjmp(state.ctx, 1); /* Jump back to scheduler_execute */
   }
+  /* If we're here, it means this thread has been rescheduled after yielding */
 }
