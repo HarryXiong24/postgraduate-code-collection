@@ -12,7 +12,16 @@
     "*.vue": "vue",
     "*.mpx": "vue",
     "*.jsx": "javascriptreact",
-    "__threading_support": "c"
+    "__threading_support": "c",
+    "__locale": "c",
+    "atomic": "c",
+    "cstddef": "c",
+    "ios": "c",
+    "limits": "c",
+    "locale": "c",
+    "new": "c",
+    "string": "c",
+    "variant": "c"
   },
   "emmet.includeLanguages": {
     "wxml": "html"
