@@ -21,7 +21,8 @@
     "locale": "c",
     "new": "c",
     "string": "c",
-    "variant": "c"
+    "variant": "c",
+    "scheduler.h": "c"
   },
   "emmet.includeLanguages": {
     "wxml": "html"

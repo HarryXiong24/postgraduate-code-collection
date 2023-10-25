@@ -6,6 +6,7 @@
  * CS 238P - Operating Systems
  * scheduler.c
  */
+#undef _FORTIFY_SOURCE
 
 #include <unistd.h>
 #include <signal.h>
@@ -38,8 +39,6 @@ typedef struct Thread
   scheduler_fnc_t fnc;
   char *arg;
   struct Thread *next;
-  char *stack_backup;       /* Backup for saved stack content */
-  size_t stack_backup_size; /* Size of the saved stack content */
 } thread;
 
 static struct
@@ -55,34 +54,36 @@ void destroy(void)
   while (current != NULL)
   {
     thread *next = current->next;
-    free(current->stack.memory);
-    free(current->stack.memory_);
-    free(current->stack_backup);
-    free(current);
+    if (current)
+    {
+      free(current);
+    }
+    if (current->stack.memory)
+    {
+      free(current->stack.memory);
+    }
+    if (current->stack.memory_)
+    {
+      free(current->stack.memory_);
+    }
     current = next;
   }
   state.head = NULL;
   state.current_thread = NULL;
 }
 
-void *get_stack_pointer(void)
-{
-  void *sp;
-  __asm__("mov %%rsp, %0"
-          : "=r"(sp));
-  return sp;
-}
-
-void set_stack_pointer(void *rsp)
-{
-  __asm__ volatile("mov %[rs], %%rsp \n"
-                   : [rs] "+r"(rsp)::);
-}
-
 thread *thread_candidate(void)
 {
-  thread *candidate = state.current_thread ? state.current_thread : state.head;
-  thread *start = candidate; /* Save the starting point */
+  thread *candidate;
+  thread *start; /* Save the starting point */
+
+  if (!state.current_thread)
+  {
+    return state.head; /* If no current thread, return the head. */
+  }
+
+  candidate = state.current_thread->next ? state.current_thread->next : state.head;
+  start = candidate;
 
   do
   {
@@ -98,43 +99,32 @@ thread *thread_candidate(void)
 
 void schedule(void)
 {
-  /* call thread_candidate() to pick up a thread, if not exist return */
-  /* state.thread = thread */
-  /* thread.status = running */
-  /* longjmp(thread -> ctx) */
-
   thread *candidate = thread_candidate();
-  printf("Entering schedule()\n");
+
   if (!candidate)
   {
     return;
   }
-  printf("Candidate selected\n");
 
-  if (state.current_thread && state.current_thread->status != STATUS_)
-  {
-    printf("Saving current thread stack\n");
-    /* Save the current stack */
-    state.current_thread->stack_backup_size = (char *)state.current_thread->stack.memory - (char *)get_stack_pointer();
-    if (state.current_thread->stack_backup_size > 0)
-    {
-      memcpy(state.current_thread->stack_backup, get_stack_pointer(), state.current_thread->stack_backup_size);
-    }
-    state.current_thread->status = STATUS_SLEEPING;
-  }
-
-  if (candidate->status != STATUS_)
-  {
-    printf("Restoring candidate thread stack\n");
-    /* Restore the next thread's stack */
-    set_stack_pointer((char *)candidate->stack.memory - candidate->stack_backup_size);
-    memcpy(get_stack_pointer(), candidate->stack_backup, candidate->stack_backup_size);
-  }
-
-  printf("Switch to the candidate thread\n");
   state.current_thread = candidate;
-  candidate->status = STATUS_RUNNING;
-  longjmp(candidate->ctx, 1); /* Switch to the candidate thread */
+
+  if (candidate->status == STATUS_)
+  {
+
+    uint64_t *rsp = (uint64_t *)candidate->stack.memory;
+    __asm__ volatile("mov %[rs], %%rsp \n"
+                     : [rs] "+r"(rsp)::);
+
+    candidate->status = STATUS_RUNNING;
+    candidate->fnc(candidate->arg);
+    candidate->status = STATUS_TERMINATED;
+    longjmp(state.ctx, 1);
+  }
+  else
+  {
+
+    longjmp(candidate->ctx, 1);
+  }
 }
 
 /**
@@ -155,8 +145,6 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
   thread *new_thread;
   size_t p_size;
 
-  printf("Entering scheduler_create()\n");
-
   p_size = page_size();
   if (p_size == 0)
   {
@@ -172,37 +160,48 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
   new_thread->status = STATUS_;
   new_thread->fnc = fnc;
   new_thread->arg = arg;
+  new_thread->next = NULL;
 
   new_thread->stack.memory_ = malloc(2 * p_size);
   if (!new_thread->stack.memory_)
   {
-    free(new_thread);
     return -1;
   }
-  new_thread->stack.memory = (char *)new_thread->stack.memory_ + 2 * p_size - sizeof(void *); /* Allocating memory for stack_backup */
-  new_thread->stack_backup = malloc(2 * p_size);                                              /* Allocate memory for stack_backup */
-  if (!new_thread->stack_backup)
+  new_thread->stack.memory = memory_align(new_thread->stack.memory_, p_size); /* Allocate memory for stack_backup */
+
+  /* link together */
+  /* Here needs to make sure that new thread should be linked at last so that we can have hello->world->I->love->this->course */
+  if (state.head == NULL)
   {
-    free(new_thread->stack.memory_);
-    free(new_thread->stack_backup);
-    free(new_thread);
-    return -1;
+    /* If list is empty, set the head to the new thread */
+    state.head = new_thread;
   }
-
-  printf("Malloc End\n");
-
-  if (setjmp(new_thread->ctx) != 0)
+  else
   {
-    new_thread->fnc(new_thread->arg);
-    new_thread->status = STATUS_TERMINATED;
-    longjmp(state.ctx, 1);
+    thread *current = state.head;
+    while (current->next != NULL)
+    {
+      current = current->next;
+    }
+    current->next = new_thread;
   }
-
-  new_thread->next = state.head;
-  state.head = new_thread;
 
   return 0;
 }
+
+/* Signal handler for SIGALRM */
+/*
+ * Use the alarm function to set a timer that sends a SIGALRM signal after a specified number of seconds.
+ * Define a signal processing function that will be called when the SIGALRM signal is received
+ * scheduler_yield() will be automatically called after 1s to trigger thread switching
+ */
+/*
+  void alarm_handler(int signum)
+  {
+    UNUSED(signum);
+    scheduler_yield();
+  }
+*/
 
 /**
  * Called to execute the user threads previously created by calling
@@ -217,12 +216,20 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
  */
 void scheduler_execute(void)
 {
-  /* check point -> state ctx */
-  /* schedule(), let a thread run */
-  /* destroy() */
+  /* Set the signal handler #define SIGALRM 14 - alarm clock */
+  /* signal(SIGALRM, alarm_handler); */
+
+  /* Set an alarm for every 1 second (or any desired interval) */
+  /* alarm(1); */
+
   if (setjmp(state.ctx) == 0)
   {
     schedule();
+  }
+  else
+  {
+    schedule();
+    return;
   }
 
   destroy();
@@ -233,7 +240,6 @@ void scheduler_execute(void)
  */
 void scheduler_yield(void)
 {
-  printf("Entering scheduler_yield()\n");
   /* check point about the state thread if it is ctx */
   /* state.thread -> status = sleeping */
   /* longjmp(state.ctx) */
@@ -243,6 +249,4 @@ void scheduler_yield(void)
     state.current_thread->status = STATUS_SLEEPING;
     longjmp(state.ctx, 1); /* Jump back to scheduler_execute */
   }
-  state.current_thread->status = STATUS_RUNNING;
-  /* If we're here, it means this thread has been rescheduled after yielding */
 }
