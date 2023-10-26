@@ -85,9 +85,14 @@ thread *thread_candidate(void)
   candidate = state.current_thread->next ? state.current_thread->next : state.head;
   start = candidate;
 
+  if (!candidate)
+  {
+    return NULL;
+  }
+
   do
   {
-    if (candidate->status == STATUS_ || candidate->status == STATUS_SLEEPING)
+    if (candidate->status != STATUS_RUNNING && candidate->status != STATUS_TERMINATED)
     {
       return candidate;
     }
@@ -111,18 +116,20 @@ void schedule(void)
   if (candidate->status == STATUS_)
   {
 
-    uint64_t *rsp = (uint64_t *)candidate->stack.memory;
+    uint64_t rsp = (uint64_t)candidate->stack.memory + 80 * page_size();
     __asm__ volatile("mov %[rs], %%rsp \n"
                      : [rs] "+r"(rsp)::);
 
     candidate->status = STATUS_RUNNING;
-    candidate->fnc(candidate->arg);
+    if (candidate->arg)
+    {
+      candidate->fnc(candidate->arg);
+    }
     candidate->status = STATUS_TERMINATED;
     longjmp(state.ctx, 1);
   }
   else
   {
-
     longjmp(candidate->ctx, 1);
   }
 }
@@ -162,7 +169,7 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
   new_thread->arg = arg;
   new_thread->next = NULL;
 
-  new_thread->stack.memory_ = malloc(2 * p_size);
+  new_thread->stack.memory_ = malloc(100 * p_size);
   if (!new_thread->stack.memory_)
   {
     return -1;
