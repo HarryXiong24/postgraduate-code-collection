@@ -195,13 +195,15 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
  * Define a signal processing function that will be called when the SIGALRM signal is received
  * scheduler_yield() will be automatically called after 1s to trigger thread switching
  */
-/*
-  void alarm_handler(int signum)
-  {
-    UNUSED(signum);
-    scheduler_yield();
-  }
-*/
+void alarm_handler(int signum)
+{
+  UNUSED(signum);
+  /* Set the signal handler #define SIGALRM 14 - alarm clock */
+  signal(SIGALRM, alarm_handler);
+  /* Set an alarm for every 1 second (or any desired interval) */
+  alarm(1);
+  scheduler_yield();
+}
 
 /**
  * Called to execute the user threads previously created by calling
@@ -217,10 +219,10 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
 void scheduler_execute(void)
 {
   /* Set the signal handler #define SIGALRM 14 - alarm clock */
-  /* signal(SIGALRM, alarm_handler); */
+  signal(SIGALRM, alarm_handler);
 
   /* Set an alarm for every 1 second (or any desired interval) */
-  /* alarm(1); */
+  alarm(1);
 
   if (setjmp(state.ctx) == 0)
   {
@@ -245,7 +247,6 @@ void scheduler_yield(void)
   /* longjmp(state.ctx) */
   if (setjmp(state.current_thread->ctx) == 0)
   {
-
     state.current_thread->status = STATUS_SLEEPING;
     longjmp(state.ctx, 1); /* Jump back to scheduler_execute */
   }
