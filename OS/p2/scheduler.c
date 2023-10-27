@@ -130,7 +130,11 @@ void schedule(void)
   }
   else
   {
-    longjmp(candidate->ctx, 1);
+    /*
+     * This task has already been started.
+     * Restore the stack pointer and resume the task.
+     */
+    longjmp(candidate->ctx, 1); /* back to scheduler_yield() */
   }
 }
 
@@ -174,10 +178,10 @@ int scheduler_create(scheduler_fnc_t fnc, void *arg)
   {
     return -1;
   }
-  new_thread->stack.memory = memory_align(new_thread->stack.memory_, p_size); /* Allocate memory for stack_backup */
+  new_thread->stack.memory = memory_align(new_thread->stack.memory_, p_size);
 
   /* link together */
-  /* Here needs to make sure that new thread should be linked at last so that we can have hello->world->I->love->this->course */
+  /* Here needs to make sure that new thread should be linked to last so that we can have hello->world->I->love->this->course */
   if (state.head == NULL)
   {
     /* If list is empty, set the head to the new thread */
@@ -233,10 +237,12 @@ void scheduler_execute(void)
 
   if (setjmp(state.ctx) == 0)
   {
+    /* first execute scheduler */
     schedule();
   }
   else
   {
+    /* from longjmp */
     schedule();
     return;
   }
