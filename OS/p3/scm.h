@@ -88,7 +88,7 @@ size_t scm_utilized(const struct scm *scm);
 size_t scm_capacity(const struct scm *scm);
 
 /**
- * Returns the base memory address withn the SCM region, i.e., the memory
+ * Returns the base memory address within the SCM region, i.e., the memory
  * pointer that would have been returned by the first call to scm_malloc()
  * after a truncated initialization.
  *
