@@ -23,7 +23,6 @@ struct scm;
  *
  * return: an opaque handle or NULL on error
  */
-
 struct scm *scm_open(const char *pathname, int truncate);
 
 /**
@@ -33,7 +32,6 @@ struct scm *scm_open(const char *pathname, int truncate);
  *
  * Note: scm may be NULL
  */
-
 void scm_close(struct scm *scm);
 
 /**
@@ -44,7 +42,6 @@ void scm_close(struct scm *scm);
  *
  * return: a pointer to the start of the allocated memory or NULL on error
  */
-
 void *scm_malloc(struct scm *scm, size_t n);
 
 /**
@@ -55,7 +52,6 @@ void *scm_malloc(struct scm *scm, size_t n);
  *
  * return: the base memory address of the duplicated C string or NULL on error
  */
-
 char *scm_strdup(struct scm *scm, const char *s);
 
 /**
@@ -64,7 +60,6 @@ char *scm_strdup(struct scm *scm, const char *s);
  * scm: an opaque handle previously obtained by calling scm_open()
  * p  : a pointer to the start of a previously allocated memory
  */
-
 void scm_free(struct scm *scm, void *p);
 
 /**
@@ -74,7 +69,6 @@ void scm_free(struct scm *scm, void *p);
  *
  * return: the number of bytes utilized thus far
  */
-
 size_t scm_utilized(const struct scm *scm);
 
 /**
@@ -84,7 +78,6 @@ size_t scm_utilized(const struct scm *scm);
  *
  * return: the number of bytes available in total
  */
-
 size_t scm_capacity(const struct scm *scm);
 
 /**
@@ -96,7 +89,6 @@ size_t scm_capacity(const struct scm *scm);
  *
  * return: the base memory address within the SCM region
  */
-
 void *scm_mbase(struct scm *scm);
 
 #endif /* _SCM_H_ */
