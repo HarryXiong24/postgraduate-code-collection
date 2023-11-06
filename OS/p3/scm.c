@@ -34,10 +34,10 @@
 
 struct scm
 {
-  int fd;       /* 文件描述符 */
+  int fd;       /* file descriptor */
   void *memory; /*  内存映射的基地址 */
   size_t size;  /* 映射大小 */
-  size_t used;  /* 已用空间 */
+  size_t used;  /* used memory */
 };
 
 /**
@@ -68,7 +68,6 @@ struct scm *scm_open(const char *pathname, int truncate)
 
   printf("Already check pathname: %s\n", pathname);
 
-  /* 分配scm结构体 */
   if (scm == NULL)
   {
     close(fd);
@@ -77,7 +76,6 @@ struct scm *scm_open(const char *pathname, int truncate)
 
   printf("Already malloc scm\n");
 
-  /* 打开文件 */
   fd = open(pathname, O_RDWR, S_IRUSR | S_IWUSR);
   if (fd == -1)
   {
@@ -87,7 +85,7 @@ struct scm *scm_open(const char *pathname, int truncate)
 
   printf("Already open file\n");
 
-  /* 获取文件大小 */
+  /* get file size */
   if (fstat(fd, &statbuf) == -1)
   {
     close(fd);
@@ -169,7 +167,7 @@ struct scm *scm_open(const char *pathname, int truncate)
 
   printf("Already mmap file\n");
 
-  /* 初始化scm结构体 */
+  /* initialize scm */
   scm->fd = fd;
   scm->memory = memory;
   scm->size = size;
@@ -195,7 +193,7 @@ void scm_close(struct scm *scm)
   if (scm != NULL)
   {
     /* 将 used 的值写入文件的最后 */
-    if (lseek(scm->fd, 0, SEEK_END) != (off_t)-1)
+    if (lseek(scm->fd, -sizeof(size_t), SEEK_END) != (off_t)-1)
     {
       if (write(scm->fd, &(scm->used), sizeof(scm->used)) == -1)
       {
@@ -204,21 +202,19 @@ void scm_close(struct scm *scm)
       }
     }
 
-    /* 如果文件大小为0，使用munmap释放内存 */
-    if (scm->size == 0)
+    /* 使用 msync 同步内存到文件 */
+    if (munmap(scm->memory, scm->size) == -1)
     {
-      munmap(scm->memory, scm->size);
-    }
-    else
-    {
-      /* 如果文件大小不为0，使用 msync 同步内存到文件 */
       msync(scm->memory, scm->size, MS_SYNC);
     }
 
-    /* 关闭文件 */
+    if (munmap(scm->memory, scm->size) == -1)
+    {
+      printf("munmap error\n");
+    }
+
     close(scm->fd);
 
-    /* 释放scm结构体 */
     free(scm);
   }
 }
