@@ -8,7 +8,7 @@
 #
 
 CC     = gcc
-CFLAGS = -ansi -pedantic -Wall -Wextra -Werror -Wfatal-errors -fpic -O3
+CFLAGS = -ansi -pedantic -Wall -Wextra -Werror -Wfatal-errors -fpic -O3 -g
 LDLIBS =
 DEST   = cs238
 SRCS  := $(wildcard *.c)

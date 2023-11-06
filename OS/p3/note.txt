@@ -1,0 +1,166 @@
+He ran the make direct first
+
+Terminal -> virtual display
+term.c -> simple ways to  control our Terminal
+shell.c -> input processing
+
+Intention : Understand Virtual memory
+Understand memory hierarchy
+
+Malloc -> virtual memory , kernel will do the address translation and all
+
+We want to allocate memory and we dont want it to map to physical address( thats what kernel does)
+
+We rather want to create mapping to file and memory
+memory map IO , Kernel will map to the file too
+
+We opened the big file -> We map the file to memory 
+
+No need to serialize and deserialize , we already have file written to memory
+Kernel will take care of loading and stuff
+
+Advantages : File will be persistent
+
+Byte addressible code store vs Block Addressible code store
+
+AVL -> Tree 
+Term.c -> 
+
+We read and write terminal , we can send special msgs , just like html , some special tags type for decorating stuff?, Color , bold and cool stuff
+
+Shell -> Read things at char level , and read special chars
+
+Run it 
+-> make
+-> ./cs238 + we need to give a file 
+dd = if=dev/zero of=file bs=4096 count=100000
+
+File will be created of size 41MB
+
+ls -l file, we'll get the file
+
+Run the program now 
+./cs238 --truncate  file
+*********************************************************
+MAPPED REGION
+UNMAPPED REGIONSCM REGION 
+**********************************************************
+
+CS238P-> 
+
+Description 
+    Mapped Region : All Virtual space availavle
+    Unmapped region :
+    SCM Region : 
+
+We can type help 
+CS238P -> help
+    info
+
+    We are gonna use this AVL to store words
+    GOnna use unique words
+    utilized : How muich memory has been utilized
+    capacity: Total capacity
+
+insert -> allows to manually add a words
+CS238P -> insert hello ( No "" , just normal insert hello)
+CS238P-> info 
+            -- info --
+                words : 1
+                words: 1 (unique)
+                utilized: 70 bytes
+                capacity: 40K or something
+
+We can load a file 
+load main.c
+We can do ctrl + l -> clear screen
+info 
+211
+140
+9315
+40K
+
+quit is for exit
+
+We quit and we type info again, we need to have those file data again, file data shouldnt vanish
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Understanding of Virtual Memory(VM) is vv imp
+Process gets its own VM. 
+Lowest memory address is 0x00000000000000000 and at the top we'll have 0xFFFFFFFFFFFFFFFF (2^64-1)
+
+Memory is broken into bits and pieces and used for diff stuff
+    - Kernel takes up some memory
+    - If we follow fork() and execv() , the stack starts to grow in memory 
+    - Zero is special memory , for eg Node *node = NULL points to 0 memory location
+    - Global variables / Static variables will occupy memory space
+    - From top stack grows , from bottom heap grows
+    - In our case , we build a tree and tree is a heap
+    - Every allocation has to be deallocated and use valgrind
+    - We are trying to take a region ( sufficiently below break point and more below the bottom value)
+    - Our region wont be mapped to a physical memory , it will be mapped to file , kernel will do it for us? How?? ( Basically load/store in physical meory)
+    - Trashing 
+    - mmap does all the wiring ( very important , without this we cant do the probject)
+    - munmap() will deallocated
+    - msync() 
+    - sbreak() -> overloaded functions , give an addrerss and it moves the break line 
+    - VIRT_ADDR -> points to beginning region
+    call sbreak () to find the breeak point first , so that we dnt access above the break limit
+    - VIRT_ADDR = 0x600000000000 -> bottom of our heap and from here the heap will grow till the break point
+    - Theres a function called file_size in the code 
+OPen File Table / Kernal Table
+
+FILE vs File descriptors , -> more on kernel data structure side 
+we are gonna use file descriptors , despite FILE giving us a function to get the details , we are gonna have POSIX calls()
+
+open(pathname , ...) // File should exist thats why we created file using dd
+close(fd)
+fstat() -> File statistics
+fstat(fd , structure) , We dont care abt anything except , we just chekc if its a regular file .
+Kernel treats many things like file , even devices , so we need to check if the file is just a storage file .
+S_ISREG(structure.st_mode) // status_mode  -> dir / file / usb / wifi / serial devices etc 
+structure.st_size //File size 
+Thats the file size
+The value returned by S_Size + lower limit ( ox600000000) should be less than the upper limit / break point 
+mmap(NULL) -> Returns an address randomly , but if we pass mmap(VIRT_ADDR) it assigns it the VIRT_ADDR
+
+Mapped -> Refion 0 - Region
+Unmapped -> Region - Current 
+SCM -> AddR - Addr + Length
+
+
+Break is below not above 
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    --------------------------------------------------
+    |                                                 |
+    |                                                 |
+    |--------------------------------------------------
+
+    ^
+    |
+    AddR
+
+    SCM_malloc -> char*  for easy memory handling 
+    size_tenp = size;
+    scm.size= scm.size + n;
+    very first time -> scm->memory + size 
+
+    keep assigning scm_size as a tail pointer to allocate memory
+    scm_malloc(10) -> First time , temp value is 0 and update scm_size to 10
+    scm_malloc(20) -> Second time , temp value is 10 this time and update scm_size to 30 ( 10 + 20)
+
+    Once we close the file , how can we get the same region again after reopening the file?
+    In other words , how can we make data persistent?
+
+    So in ur base location ( start location ) -> keep updating the size , something like meta data
+    call msync()
+    Add encryption / decryption in meta data for robustness , its probably there in his code already?
+
+    So now , the base addr has changed , caz we have loaded meta data 
+    so there are 2 base 
+
+    ----------------------------------------------------------------------
+start<-------meta data----------><- -------new base----------------------->  
