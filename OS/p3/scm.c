@@ -302,11 +302,11 @@ void scm_free(struct scm *scm, void *p)
     return;
   }
 
-  /* 如果释放的内存地址在已用内存的末尾，更新已用内存大小 */
-  if (p == (char *)scm->memory + scm->used)
-  {
-    scm->used = scm->used - sizeof(p);
-  }
+  printf("p_size: %ld\n", sizeof(p));
+
+  scm->used = scm->used - (size_t)sizeof(p);
+
+  printf("scm->used: %ld\n", scm->used);
 
   return;
 }

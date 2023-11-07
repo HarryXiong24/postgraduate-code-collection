@@ -202,6 +202,130 @@ avl_open(const char *pathname, int truncate)
 	return avl;
 }
 
+static struct node *
+minValueNode(struct node *node)
+{
+	struct node *current = node;
+
+	/* Traverse the tree to the leftmost leaf */
+	while (current && current->left != NULL)
+		current = current->left;
+
+	return current;
+}
+
+static struct node *
+remove_node(struct avl *avl, struct node *root, const char *item)
+{
+	int bal;
+	int d;
+
+	if (root == NULL)
+	{
+		/* The item was not found. */
+		return root;
+	}
+
+	d = strcmp(item, root->item);
+
+	/* If the item to be deleted is smaller than the root's item, then it lies in left subtree */
+	if (d < 0)
+	{
+		root->left = remove_node(avl, root->left, item);
+	}
+	/* If the item to be deleted is greater than the root's item, then it lies in right subtree */
+	else if (d > 0)
+	{
+		root->right = remove_node(avl, root->right, item);
+	}
+	/* If item is same as root's item, then this is the node to be deleted */
+	else
+	{
+		/* Node with only one child or no child */
+		if ((root->left == NULL) || (root->right == NULL))
+		{
+			struct node *temp = root->left ? root->left : root->right;
+
+			if (temp == NULL)
+			{
+				temp = root;
+				root = NULL;
+			}
+			else
+			{
+				/* Copy the contents of the non-empty child */
+				*root = *temp;
+			}
+			scm_free(avl->scm, temp);
+		}
+		else
+		{
+			/* Node with two children: Get the inorder successor (smallest in the right subtree) */
+			struct node *temp = minValueNode(root->right);
+
+			/* Copy the inorder successor's data to this node */
+			root->item = temp->item;
+
+			/* Delete the inorder successor */
+			root->right = remove_node(avl, root->right, temp->item);
+		}
+	}
+
+	if (root == NULL)
+	{
+		return root;
+	}
+
+	/* Update the depth of the current node */
+	root->depth = depth(root->left, root->right);
+
+	/* Balance the node if it has become unbalanced */
+	bal = balance(root);
+
+	/* If this node becomes unbalanced, then there are 4 cases */
+	/* Left Left Case */
+	if (bal > 1 && balance(root->left) >= 0)
+		return rotate_right(root);
+
+	/* Left Right Case */
+	if (bal > 1 && balance(root->left) < 0)
+	{
+		root->left = rotate_left(root->left);
+		return rotate_right(root);
+	}
+
+	/* Right Right Case */
+	if (bal < -1 && balance(root->right) <= 0)
+		return rotate_left(root);
+
+	/* Right Left Case */
+	if (bal < -1 && balance(root->right) > 0)
+	{
+		root->right = rotate_right(root->right);
+		return rotate_left(root);
+	}
+
+	return root;
+}
+
+int avl_remove(struct avl *avl, const char *item)
+{
+	if (!avl || !item)
+	{
+		TRACE("Invalid AVL tree or item.");
+		return -1;
+	}
+
+	if (!avl->state->root)
+	{
+		TRACE("Item not found.");
+		return -1;
+	}
+
+	avl->state->root = remove_node(avl, avl->state->root, item);
+	return 0;
+}
+
 void avl_close(struct avl *avl)
 {
 	if (avl)
