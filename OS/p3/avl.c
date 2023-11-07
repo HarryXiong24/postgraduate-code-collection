@@ -109,6 +109,8 @@ update(struct avl *avl, struct node *root, const char *item)
 		++root->count;
 		++avl->state->items;
 		++avl->state->unique;
+		printf("avl->state->items: %ld\n", avl->state->items);
+		printf("avl->state->unique: %ld\n", avl->state->unique);
 		return root;
 	}
 	if (!(d = strcmp(item, root->item)))

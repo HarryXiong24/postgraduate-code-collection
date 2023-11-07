@@ -203,9 +203,9 @@ void scm_close(struct scm *scm)
     }
 
     /* 使用 msync 同步内存到文件 */
-    if (munmap(scm->memory, scm->size) == -1)
+    if (msync(scm->memory, scm->size, MS_SYNC); == -1)
     {
-      msync(scm->memory, scm->size, MS_SYNC);
+      printf("msync error\n");
     }
 
     if (munmap(scm->memory, scm->size) == -1)
