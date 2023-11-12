@@ -54,10 +54,6 @@ struct scm *scm_open(const char *pathname, int truncate)
 {
   struct scm *scm = (struct scm *)malloc(sizeof(struct scm));
   struct stat statbuf;
-  int fd = -1;
-  void *memory = NULL;
-  size_t capacity = 0;
-  size_t utilized = 0;
 
   if (pathname == NULL)
   {
@@ -68,12 +64,11 @@ struct scm *scm_open(const char *pathname, int truncate)
   if (scm == NULL)
   {
     TRACE("Error");
-    close(fd);
     return NULL;
   }
 
-  fd = open(pathname, O_RDWR, S_IRUSR | S_IWUSR);
-  if (fd == -1)
+  scm->fd = open(pathname, O_RDWR, S_IRUSR | S_IWUSR);
+  if (scm->fd == -1)
   {
     TRACE("Error");
     free(scm);
@@ -81,10 +76,10 @@ struct scm *scm_open(const char *pathname, int truncate)
   }
 
   /* get file size */
-  if (fstat(fd, &statbuf) == -1)
+  if (fstat(scm->fd, &statbuf) == -1)
   {
     TRACE("Error");
-    close(fd);
+    close(scm->fd);
     free(scm);
     return NULL;
   }
@@ -93,48 +88,33 @@ struct scm *scm_open(const char *pathname, int truncate)
   if (!S_ISREG(statbuf.st_mode))
   {
     TRACE("Error");
-    close(fd);
+    close(scm->fd);
     free(scm);
     return NULL;
   }
 
-  /* if (sbrk(scm->capacity) == (void *)-1)
+  scm->capacity = statbuf.st_size;
+
+  scm->memory = mmap((void *)VIRT_ADDR, scm->capacity, PROT_READ | PROT_WRITE, MAP_SHARED, scm->fd, 0);
+  if (scm->memory == MAP_FAILED)
   {
     TRACE("Error");
-    close(fd);
-    free(scm);
-    return NULL;
-  } */
-
-  capacity = statbuf.st_size;
-
-  memory = mmap((void *)VIRT_ADDR, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (memory == MAP_FAILED)
-  {
-    TRACE("Error");
-    close(fd);
+    close(scm->fd);
     free(scm);
     return NULL;
   }
 
   if (!truncate)
   {
-    if (lseek(fd, -sizeof(size_t), SEEK_END) != (off_t)-1)
-    {
-      if (read(fd, &utilized, sizeof(size_t)) == -1)
-      {
-        TRACE("Error");
-        close(fd);
-        return NULL;
-      }
-    }
+    /* if not truncate, read the utilized in the header, use size_t space */
+    scm->utilized = *(size_t *)scm->memory;
   }
-
-  /* initialize scm */
-  scm->fd = fd;
-  scm->memory = memory;
-  scm->capacity = capacity;
-  scm->utilized = utilized;
+  else
+  {
+    /* if truncate, store the utilized in the header, use size_t space */
+    scm->utilized = 0;
+    *(size_t *)scm->memory = scm->utilized;
+  }
 
   return scm;
 }
@@ -150,17 +130,7 @@ void scm_close(struct scm *scm)
 {
   if (scm != NULL)
   {
-    if (lseek(scm->fd, -sizeof(size_t), SEEK_END) != (off_t)-1)
-    {
-      if (write(scm->fd, &(scm->utilized), sizeof(scm->utilized)) == -1)
-      {
-        TRACE("Error");
-        close(scm->fd);
-        return;
-      }
-    }
-
-    if (msync(scm->memory, scm->utilized, MS_SYNC) == -1)
+    if (msync(scm->memory, scm->capacity, MS_SYNC) == -1)
     {
       TRACE("Error");
     }
@@ -186,16 +156,33 @@ void scm_close(struct scm *scm)
  */
 void *scm_malloc(struct scm *scm, size_t n)
 {
-  void *memory = NULL;
+  void *memory;
+  size_t *block_size;
 
-  if (scm == NULL || n == 0 || scm->utilized + n > scm->capacity)
+  if (scm == NULL || n == 0)
   {
     TRACE("Error");
     return NULL;
   }
 
-  memory = (char *)scm->memory + scm->utilized;
-  scm->utilized = scm->utilized + n;
+  if (scm->utilized + n + sizeof(size_t) > scm->capacity)
+  {
+    TRACE("Error");
+    return NULL;
+  }
+
+  /* calculate the position of store the size */
+  block_size = (size_t *)((char *)scm->memory + sizeof(size_t) + scm->utilized);
+
+  /* store the size */
+  *block_size = n;
+
+  /* move the pointer to the actual start of the allocated block */
+  memory = (void *)(block_size + 1);
+  scm->utilized += n + sizeof(size_t);
+
+  /* update the memory header to store the new utilized value */
+  *(size_t *)scm->memory = scm->utilized;
 
   return memory;
 }
@@ -219,13 +206,8 @@ char *scm_strdup(struct scm *scm, const char *s)
     return NULL;
   }
 
-  /* 计算字符串长度 */
+  /* need to include '\0' */
   n = strlen(s) + 1;
-
-  if (scm->utilized + n > scm->capacity)
-  {
-    return NULL;
-  }
 
   memory = scm_malloc(scm, n);
   if (memory == NULL)
@@ -234,7 +216,7 @@ char *scm_strdup(struct scm *scm, const char *s)
     return NULL;
   }
 
-  strncpy(memory, s, n);
+  memcpy(memory, s, n);
 
   return memory;
 }
@@ -247,13 +229,21 @@ char *scm_strdup(struct scm *scm, const char *s)
  */
 void scm_free(struct scm *scm, void *p)
 {
+  size_t size;
+
   if (scm == NULL || p == NULL)
   {
     TRACE("Error");
     return;
   }
 
-  scm->utilized = scm->utilized - (size_t)sizeof(p);
+  size = *(size_t *)((char *)p - sizeof(size_t));
+
+  /* update utilized */
+  scm->utilized = scm->utilized - size - sizeof(size_t);
+
+  /* update the header information */
+  *(size_t *)scm->memory = scm->utilized;
 
   return;
 }
@@ -275,7 +265,7 @@ size_t scm_utilized(const struct scm *scm)
   return scm->utilized;
 }
 
-/**？。
+/**
  * Returns the number of SCM bytes available in total.
  *
  * scm: an opaque handle previously obtained by calling scm_open()
@@ -308,5 +298,7 @@ void *scm_mbase(struct scm *scm)
     TRACE("Error");
     return 0;
   }
-  return scm->memory;
+
+  /* skip the space used to store the utilized size  */
+  return (char *)scm->memory + sizeof(size_t) + sizeof(size_t);
 }

@@ -22,7 +22,10 @@
     "new": "c",
     "string": "c",
     "variant": "c",
-    "scheduler.h": "c"
+    "scheduler.h": "c",
+    "__bit_reference": "c",
+    "__split_buffer": "c",
+    "vector": "c"
   },
   "emmet.includeLanguages": {
     "wxml": "html"
