@@ -35,10 +35,10 @@
 
 struct scm
 {
-  int fd;       /* file descriptor */
-  void *memory; /*  内存映射的基地址 */
-  size_t size;  /* 映射大小 */
-  size_t used;  /* used memory */
+  int fd;          /* file descriptor */
+  void *memory;    /* base memory address */
+  size_t capacity; /* total memory */
+  size_t utilized; /* utilized memory */
 };
 
 /**
@@ -56,19 +56,14 @@ struct scm *scm_open(const char *pathname, int truncate)
   struct stat statbuf;
   int fd = -1;
   void *memory = NULL;
-  size_t size = 0;
-  size_t used = 0;
+  size_t capacity = 0;
+  size_t utilized = 0;
 
-  printf("scm_open begin\n");
-
-  /* 检查参数 */
   if (pathname == NULL)
   {
     TRACE("Error");
     return NULL;
   }
-
-  printf("Already check pathname: %s\n", pathname);
 
   if (scm == NULL)
   {
@@ -77,8 +72,6 @@ struct scm *scm_open(const char *pathname, int truncate)
     return NULL;
   }
 
-  printf("Already malloc scm\n");
-
   fd = open(pathname, O_RDWR, S_IRUSR | S_IWUSR);
   if (fd == -1)
   {
@@ -86,8 +79,6 @@ struct scm *scm_open(const char *pathname, int truncate)
     free(scm);
     return NULL;
   }
-
-  printf("Already open file\n");
 
   /* get file size */
   if (fstat(fd, &statbuf) == -1)
@@ -98,9 +89,7 @@ struct scm *scm_open(const char *pathname, int truncate)
     return NULL;
   }
 
-  printf("Already get file size\n");
-
-  /* 检查文件是否为普通文件 */
+  /* check file type */
   if (!S_ISREG(statbuf.st_mode))
   {
     TRACE("Error");
@@ -109,78 +98,43 @@ struct scm *scm_open(const char *pathname, int truncate)
     return NULL;
   }
 
-  printf("Already check file type\n");
+  /* if (sbrk(scm->capacity) == (void *)-1)
+  {
+    TRACE("Error");
+    close(fd);
+    free(scm);
+    return NULL;
+  } */
 
-  size = statbuf.st_size;
+  capacity = statbuf.st_size;
 
-  printf("size: %ld\n", size);
+  memory = mmap((void *)VIRT_ADDR, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (memory == MAP_FAILED)
+  {
+    TRACE("Error");
+    close(fd);
+    free(scm);
+    return NULL;
+  }
 
   if (!truncate)
   {
-    /* Call sbrk(0) to find the current break point. */
-    /*void *current_break = sbrk(0);
-    if (current_break == (void *)-1)
-    {
-      TRACE("Error");
-      close(fd);
-      free(scm);
-      return NULL;
-    }
-
-    if (current_break < (void *)VIRT_ADDR)
-    {
-      sbrk((char *)VIRT_ADDR - (char *)current_break);
-    }*/
-
-    /* Now allocate memory with mmap starting from VIRT_ADDR. */
-    memory = mmap((void *)VIRT_ADDR, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (memory == MAP_FAILED)
-    {
-      TRACE("Error");
-      close(fd);
-      free(scm);
-      return NULL;
-    }
-
     if (lseek(fd, -sizeof(size_t), SEEK_END) != (off_t)-1)
     {
-      if (read(fd, &used, sizeof(size_t)) == -1)
+      if (read(fd, &utilized, sizeof(size_t)) == -1)
       {
         TRACE("Error");
         close(fd);
         return NULL;
       }
     }
-
-    printf("used: %ld\n", used);
-
-    printf("no-truncate end\n");
   }
-  else
-  {
-    memory = mmap((void *)VIRT_ADDR, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (memory == MAP_FAILED)
-    {
-      TRACE("Error");
-      close(fd);
-      free(scm);
-      return NULL;
-    }
-
-    printf("truncate end\n");
-  }
-
-  printf("Already mmap file\n");
 
   /* initialize scm */
   scm->fd = fd;
   scm->memory = memory;
-  scm->size = size;
-  scm->used = used;
-
-  printf("memory: %p\n", memory);
-  printf("size: %ld\n", size);
-  printf("used: %ld\n", used);
+  scm->capacity = capacity;
+  scm->utilized = utilized;
 
   return scm;
 }
@@ -194,13 +148,11 @@ struct scm *scm_open(const char *pathname, int truncate)
  */
 void scm_close(struct scm *scm)
 {
-  printf("scm_close begin\n");
   if (scm != NULL)
   {
-    /* 将 used 的值写入文件的最后 */
     if (lseek(scm->fd, -sizeof(size_t), SEEK_END) != (off_t)-1)
     {
-      if (write(scm->fd, &(scm->used), sizeof(scm->used)) == -1)
+      if (write(scm->fd, &(scm->utilized), sizeof(scm->utilized)) == -1)
       {
         TRACE("Error");
         close(scm->fd);
@@ -208,13 +160,12 @@ void scm_close(struct scm *scm)
       }
     }
 
-    /* 使用 msync 同步内存到文件 */
-    if (msync(scm->memory, scm->size, MS_SYNC) == -1)
+    if (msync(scm->memory, scm->utilized, MS_SYNC) == -1)
     {
       TRACE("Error");
     }
 
-    if (munmap(scm->memory, scm->size) == -1)
+    if (munmap(scm->memory, scm->capacity) == -1)
     {
       TRACE("Error");
     }
@@ -237,20 +188,14 @@ void *scm_malloc(struct scm *scm, size_t n)
 {
   void *memory = NULL;
 
-  printf("scm_malloc begin\n");
-
-  if (scm == NULL || n == 0 || scm->used + n > scm->size)
+  if (scm == NULL || n == 0 || scm->utilized + n > scm->capacity)
   {
     TRACE("Error");
     return NULL;
   }
 
-  printf("Check passed\n");
-
-  memory = (char *)scm->memory + scm->used;
-  scm->used = scm->used + n;
-
-  printf("memory: %p\n", memory);
+  memory = (char *)scm->memory + scm->utilized;
+  scm->utilized = scm->utilized + n;
 
   return memory;
 }
@@ -268,8 +213,6 @@ char *scm_strdup(struct scm *scm, const char *s)
   char *memory = NULL;
   size_t n = 0;
 
-  printf("scm_strdup begin\n");
-
   if (scm == NULL || s == NULL)
   {
     TRACE("Error");
@@ -279,7 +222,7 @@ char *scm_strdup(struct scm *scm, const char *s)
   /* 计算字符串长度 */
   n = strlen(s) + 1;
 
-  if (scm->used + n > scm->size)
+  if (scm->utilized + n > scm->capacity)
   {
     return NULL;
   }
@@ -304,20 +247,13 @@ char *scm_strdup(struct scm *scm, const char *s)
  */
 void scm_free(struct scm *scm, void *p)
 {
-  printf("scm_free begin\n");
-
   if (scm == NULL || p == NULL)
   {
     TRACE("Error");
     return;
   }
 
-  printf("p_size: %ld\n", sizeof(p));
-  printf("p_size: %ld\n", sizeof(scm));
-
-  scm->used = scm->used - (size_t)sizeof(p) - (size_t)sizeof(scm);
-
-  printf("scm->used: %ld\n", scm->used);
+  scm->utilized = scm->utilized - (size_t)sizeof(p);
 
   return;
 }
@@ -331,16 +267,15 @@ void scm_free(struct scm *scm, void *p)
  */
 size_t scm_utilized(const struct scm *scm)
 {
-  printf("scm_utilized begin\n");
   if (scm == NULL)
   {
     TRACE("Error");
     return 0;
   }
-  return scm->used;
+  return scm->utilized;
 }
 
-/**
+/**？。
  * Returns the number of SCM bytes available in total.
  *
  * scm: an opaque handle previously obtained by calling scm_open()
@@ -349,13 +284,12 @@ size_t scm_utilized(const struct scm *scm)
  */
 size_t scm_capacity(const struct scm *scm)
 {
-  printf("scm_capacity begin\n");
   if (scm == NULL)
   {
     TRACE("Error");
     return 0;
   }
-  return scm->size;
+  return scm->capacity;
 }
 
 /**
@@ -369,7 +303,6 @@ size_t scm_capacity(const struct scm *scm)
  */
 void *scm_mbase(struct scm *scm)
 {
-  printf("scm_mbase begin\n");
   if (scm == NULL)
   {
     TRACE("Error");

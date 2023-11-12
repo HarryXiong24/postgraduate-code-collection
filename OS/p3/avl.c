@@ -99,18 +99,14 @@ update(struct avl *avl, struct node *root, const char *item)
 			return NULL;
 		}
 		memset(root, 0, sizeof(struct node));
-		printf("102 scm_malloc end\n");
 		if (!(root->item = scm_strdup(avl->scm, item)))
 		{
 			TRACE(0);
 			return NULL;
 		}
-		printf("108 scm_strdup end\n");
 		++root->count;
 		++avl->state->items;
 		++avl->state->unique;
-		printf("avl->state->items: %ld\n", avl->state->items);
-		printf("avl->state->unique: %ld\n", avl->state->unique);
 		return root;
 	}
 	if (!(d = strcmp(item, root->item)))
@@ -195,11 +191,8 @@ avl_open(const char *pathname, int truncate)
 			TRACE(0);
 			return NULL;
 		}
-		printf("196 scm_malloc end\n");
 		memset(avl->state, 0, sizeof(struct state));
-		printf("198 scm_mbase start\n");
 		assert(avl->state == scm_mbase(avl->scm));
-		printf("200 scm_mbase end\n");
 	}
 	return avl;
 }
@@ -258,6 +251,7 @@ remove_node(struct avl *avl, struct node *root, const char *item)
 				/* Copy the contents of the non-empty child */
 				*root = *temp;
 			}
+			scm_free(avl->scm, (void *)temp->item);
 			scm_free(avl->scm, temp);
 		}
 		else
