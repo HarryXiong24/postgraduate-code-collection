@@ -79,7 +79,7 @@ list_word(void *arg, const char *word, uint64_t count)
 {
 	UNUSED(arg);
 
-	printf("'%s' x %lu\n", word, (unsigned long)count);
+	printf("'%s' x %lu %p\n", word, (unsigned long)count, word);
 }
 
 static int

@@ -238,7 +238,6 @@ remove_node(struct avl *avl, struct node *root, const char *item)
 		if (root->count > 1)
 		{
 			root->count--;
-			avl->state->items--;
 		}
 		else
 		{
@@ -254,11 +253,9 @@ remove_node(struct avl *avl, struct node *root, const char *item)
 				}
 				else
 				{
-					/* Copy the contents of the non-empty child */
 					*root = *temp;
 				}
-				avl->state->items--;
-				avl->state->unique--;
+
 				scm_free(avl->scm, (void *)temp->item);
 				scm_free(avl->scm, temp);
 			}
@@ -326,6 +323,13 @@ int avl_remove(struct avl *avl, const char *item)
 	}
 
 	avl->state->root = remove_node(avl, avl->state->root, item);
+
+	avl->state->items--;
+	if (avl_exists(avl, item) == 0)
+	{
+		avl->state->unique--;
+	}
+
 	return 0;
 }
 

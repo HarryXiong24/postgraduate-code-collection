@@ -229,6 +229,7 @@ char *scm_strdup(struct scm *scm, const char *s)
  */
 void scm_free(struct scm *scm, void *p)
 {
+  size_t *size_ptr;
   size_t size;
 
   if (scm == NULL || p == NULL)
@@ -237,7 +238,8 @@ void scm_free(struct scm *scm, void *p)
     return;
   }
 
-  size = *(size_t *)((char *)p - sizeof(size_t));
+  size_ptr = (size_t *)((char *)p - sizeof(size_t));
+  size = *size_ptr;
 
   /* update utilized */
   scm->utilized = scm->utilized - size - sizeof(size_t);
