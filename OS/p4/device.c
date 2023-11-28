@@ -30,9 +30,10 @@
  *   pwrite()
  */
 
-struct device {
+struct device
+{
 	int fd;
-	uint64_t size;  /* immutable */
+	uint64_t size;	/* immutable */
 	uint64_t block; /* immutable */
 };
 
@@ -44,26 +45,32 @@ geometry(struct device *device)
 	uint32_t u32;
 
 	u64 = u32 = 0;
-	if (fstat(device->fd, &st)) {
+	if (fstat(device->fd, &st))
+	{
 		TRACE("fstat()");
 		return -1;
 	}
-	if (S_ISREG(st.st_mode)) {
+	if (S_ISREG(st.st_mode))
+	{
 		u64 = st.st_size;
 		u32 = st.st_blksize;
 	}
-	else if (S_ISBLK(st.st_mode)) {
+	else if (S_ISBLK(st.st_mode))
+	{
 		if (ioctl(device->fd, BLKGETSIZE64, &u64) ||
-		    ioctl(device->fd, BLKSSZGET, &u32)) {
+				ioctl(device->fd, BLKSSZGET, &u32))
+		{
 			TRACE("ioctl()");
 			return -1;
 		}
 	}
-	else {
+	else
+	{
 		TRACE("device not supported");
 		return -1;
 	}
-	if (!u32 || !u64) {
+	if (!u32 || !u64)
+	{
 		TRACE("bad device geometry");
 		return -1;
 	}
@@ -77,15 +84,18 @@ device_open(const char *pathname)
 {
 	struct device *device;
 
-	assert( safe_strlen(pathname) );
+	assert(safe_strlen(pathname));
 
-	if (!(device = malloc(sizeof (struct device)))) {
+	if (!(device = malloc(sizeof(struct device))))
+	{
 		TRACE("out of memory");
 		return NULL;
 	}
-	memset(device, 0, sizeof (struct device));
-	if (0 >= (device->fd = open(pathname, O_RDWR | O_DIRECT))) {
-		if (EACCES == errno) {
+	memset(device, 0, sizeof(struct device));
+	if (0 >= (device->fd = open(pathname, O_RDWR | O_DIRECT)))
+	{
+		if (EACCES == errno)
+		{
 			device_close(device);
 			TRACE("no volume access");
 			return NULL;
@@ -94,7 +104,8 @@ device_open(const char *pathname)
 		TRACE("open()");
 		return NULL;
 	}
-	if (geometry(device)) {
+	if (geometry(device))
+	{
 		device_close(device);
 		TRACE(0);
 		return NULL;
@@ -102,50 +113,52 @@ device_open(const char *pathname)
 	return device;
 }
 
-void
-device_close(struct device *device)
+void device_close(struct device *device)
 {
-	if (device) {
-		if (0 < device->fd) {
-			if (close(device->fd)) {
+	if (device)
+	{
+		if (0 < device->fd)
+		{
+			if (close(device->fd))
+			{
 				TRACE("close()");
 			}
 		}
-		memset(device, 0, sizeof (struct device));
+		memset(device, 0, sizeof(struct device));
 	}
 	FREE(device);
 }
 
-int
-device_read(struct device *device, void *buf, uint64_t off, uint64_t len)
+int device_read(struct device *device, void *buf, uint64_t off, uint64_t len)
 {
-	assert( !len || buf );
-	assert( 0 == (off % device->block) );
-	assert( 0 == (len % device->block) );
-	assert( (off + len) <= device->size );
+	assert(!len || buf);
+	assert(0 == (off % device->block));
+	assert(0 == (len % device->block));
+	assert((off + len) <= device->size);
 
-	if (len != (uint64_t)pread(device->fd, buf, (size_t)len, (off_t)off)) {
+	if (len != (uint64_t)pread(device->fd, buf, (size_t)len, (off_t)off))
+	{
 		TRACE("pread()");
 		return -1;
 	}
 	return 0;
 }
 
-int
-device_write(struct device *device,
-	     const void *buf,
-	     uint64_t off,
-	     uint64_t len)
+int device_write(struct device *device,
+								 const void *buf,
+								 uint64_t off,
+								 uint64_t len)
 {
-	assert( !len || buf );
-	assert( 0 == (off % device->block) );
-	assert( 0 == (len % device->block) );
-	assert( (off + len) <= device->size );
+	assert(!len || buf);
+	assert(0 == (off % device->block));
+	assert(0 == (len % device->block));
+	assert((off + len) <= device->size);
 
 	if (len != (uint64_t)pwrite(device->fd,
-				    buf,
-				    (size_t)len,
-				    (off_t)off)) {
+															buf,
+															(size_t)len,
+															(off_t)off))
+	{
 		TRACE("pwrite()");
 		return -1;
 	}
@@ -155,7 +168,7 @@ device_write(struct device *device,
 uint64_t
 device_size(const struct device *device)
 {
-	assert( device );
+	assert(device);
 
 	return device->size;
 }
@@ -163,7 +176,7 @@ device_size(const struct device *device)
 uint64_t
 device_block(const struct device *device)
 {
-	assert( device );
+	assert(device);
 
 	return device->block;
 }
