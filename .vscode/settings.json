@@ -25,7 +25,8 @@
     "scheduler.h": "c",
     "__bit_reference": "c",
     "__split_buffer": "c",
-    "vector": "c"
+    "vector": "c",
+    "kvraw.h": "c"
   },
   "emmet.includeLanguages": {
     "wxml": "html"

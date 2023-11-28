@@ -37,7 +37,7 @@
 /*
  * appendBuffer 用于管理已经准备好写入 device 的数据
  * 这个缓冲区通常比 writeBuffer 大，并且用于存储从 writeBuffer 迁移过来的数据
- * 当 writeBuffer 被填满并准备好写入时，数据会被传输到 appendBuffer。appendBuffer 起到了一个中转站的作用，保存数据直到被后台写入
+ * 当 writeBuffer 被填满并准备好写入时，数据会被传到 appendBuffer。appendBuffer 起到了一个中转站的作用，保存数据直到被后台写入
  */
 struct appendQueue
 {
@@ -193,6 +193,7 @@ logfs_open(const char *pathname)
         return NULL;
     }
 
+    /* init new_logfs */
     new_logfs->device = device;
     new_logfs->tail = 0;
     new_logfs->head = 0;
@@ -313,7 +314,11 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
     if (writeBuffer.utilized != 0)
     {
         uint64_t index = (logfs->head) % RCACHE_BLOCKS;
-        device_write(logfs->device, writeBuffer.address, logfs->head, BLOCK_SIZE);
+        if (device_write(logfs->device, writeBuffer.address, logfs->head, BLOCK_SIZE) < 0)
+        {
+            printf("device_write error\n");
+            return -1;
+        }
         memcpy(cache.blocks[index].data, writeBuffer.address, BLOCK_SIZE);
         cache.blocks[index].off = logfs->head;
         cache.blocks[index].isUsed = 1;
@@ -332,8 +337,11 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
         /* 没有在 cache 中找到 */
         if (!isCacheHit)
         {
-            device_read(logfs->device, tempBuffer, alignOff, alignLen * BLOCK_SIZE);
-            /* update the buffer into the cache */
+            if (device_read(logfs->device, tempBuffer, alignOff, alignLen * BLOCK_SIZE) < 0)
+            {
+                printf("device_read error\n");
+                return -1;
+            }
             isUpdateCache = 1;
             break;
         }
