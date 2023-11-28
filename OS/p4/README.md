@@ -19,6 +19,7 @@ lsblk
 ## Exec
 
 sudo ./cs238 /dev/loop24
+sudo valgrind --leak-check=full ./cs238 /dev/loop24
 
 ## For check
 
