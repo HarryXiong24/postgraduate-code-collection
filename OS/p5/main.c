@@ -15,6 +15,27 @@
  *   signal()
  */
 
+struct cpuStatus
+{
+	unsigned user;
+	unsigned nice;
+	unsigned system;
+	unsigned idle;
+	unsigned iowait;
+	unsigned irq;
+	unsigned softirq;
+	double util;
+};
+
+struct systemStatus
+{
+	unsigned long ctxt;
+	long btime;
+	unsigned processes;
+	unsigned procs_running;
+	unsigned procs_blocked;
+};
+
 static volatile int done;
 
 static void
@@ -25,14 +46,13 @@ _signal_(int signum)
 	done = 1;
 }
 
-double
-cpu_util(const char *s)
+struct cpuStatus cpu_util(const char *s)
 {
 	static unsigned sum_, vector_[7];
 	unsigned sum, vector[7];
 	const char *p;
-	double util;
 	uint64_t i;
+	struct cpuStatus status;
 
 	/*
 		user
@@ -55,20 +75,60 @@ cpu_util(const char *s)
 									 &vector[5],
 									 &vector[6])))
 	{
-		return 0;
+		memset(&status, 0, sizeof(status));
+		return status;
 	}
 	sum = 0.0;
 	for (i = 0; i < ARRAY_SIZE(vector); ++i)
 	{
 		sum += vector[i];
 	}
-	util = (1.0 - (vector[3] - vector_[3]) / (double)(sum - sum_)) * 100.0;
+	status.util = (1.0 - (vector[3] - vector_[3]) / (double)(sum - sum_)) * 100.0;
+	status.user = vector[0];
+	status.nice = vector[1];
+	status.system = vector[2];
+	status.idle = vector[3];
+	status.iowait = vector[4];
+	status.irq = vector[5];
+	status.softirq = vector[6];
 	sum_ = sum;
 	for (i = 0; i < ARRAY_SIZE(vector); ++i)
 	{
 		vector_[i] = vector[i];
 	}
-	return util;
+	return status;
+}
+
+struct systemStatus get_system_status(FILE *file)
+{
+	struct systemStatus status;
+	char line[1024];
+
+	while (fgets(line, sizeof(line), file) != NULL)
+	{
+		if (sscanf(line, "ctxt %lu", &status.ctxt) == 1)
+		{
+			continue;
+		}
+		if (sscanf(line, "btime %ld", &status.btime) == 1)
+		{
+			continue;
+		}
+		if (sscanf(line, "processes %u", &status.processes) == 1)
+		{
+			continue;
+		}
+		if (sscanf(line, "procs_running %u", &status.procs_running) == 1)
+		{
+			continue;
+		}
+		if (sscanf(line, "procs_blocked %u", &status.procs_blocked) == 1)
+		{
+			continue;
+		}
+	}
+
+	return status;
 }
 
 int main(int argc, char *argv[])
@@ -87,16 +147,41 @@ int main(int argc, char *argv[])
 	}
 	while (!done)
 	{
+		struct cpuStatus cpu_status;
+		struct systemStatus sys_status = {0};
+
 		if (!(file = fopen(PROC_STAT, "r")))
 		{
 			TRACE("fopen()");
 			return -1;
 		}
-		if (fgets(line, sizeof(line), file))
+		while (fgets(line, sizeof(line), file))
 		{
-			printf("\r%5.1f%%", cpu_util(line));
-			fflush(stdout);
+			if (strncmp(line, "cpu ", 4) == 0)
+			{
+				cpu_status = cpu_util(line);
+			}
+			else
+			{
+				sys_status = get_system_status(file);
+			}
 		}
+		printf("\033[2J\033[H");
+		printf("CPU: %5.1f%%\n", cpu_status.util);
+		printf("User: %u\n", cpu_status.user);
+		printf("Nice: %u\n", cpu_status.nice);
+		printf("System: %u\n", cpu_status.system);
+		printf("Idle: %u\n", cpu_status.idle);
+		printf("IOwait: %u\n", cpu_status.iowait);
+		printf("IRQ: %u\n", cpu_status.irq);
+		printf("SoftIRQ: %u\n", cpu_status.softirq);
+		printf("ctxt: %lu\n", sys_status.ctxt);
+		printf("btime: %ld\n", sys_status.btime);
+		printf("processes: %u\n", sys_status.processes);
+		printf("procs_running: %u\n", sys_status.procs_running);
+		printf("procs_blocked: %u\n", sys_status.procs_blocked);
+
+		fflush(stdout);
 		us_sleep(500000);
 		fclose(file);
 	}

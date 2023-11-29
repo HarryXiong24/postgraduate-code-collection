@@ -1,5 +1,7 @@
 # How to test
 
+gcloud compute scp --recurse "/Users/harryxiong24/Code/Study/grad-code-collection/OS/p1" ubuntu:
+
 ```bash
 # general test
 ./cs238 "1*2+1/4"

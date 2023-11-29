@@ -247,7 +247,7 @@ void logfs_close(struct logfs *logfs)
      * 检查 writeBuffer 是否有未处理的数据
      * 如果有，将它们复制到 appendBuffer，准备写入
      */
-    if (writeBuffer.utilized != 0 && writeBuffer.address != NULL)
+    if (writeBuffer.address != NULL && writeBuffer.utilized != 0)
     {
         if (appendBuffer.head == appendBuffer.size)
         {
@@ -262,12 +262,12 @@ void logfs_close(struct logfs *logfs)
     pthread_join(consumerThread, NULL); /* 等待 consumer 线程完成，确保所有数据都被正确处理 */
     device_close(logfs->device);
 
-    free(appendBuffer.address);
-    free(writeBuffer.address);
-    free(logfs);
     pthread_mutex_destroy(&mutex);
     pthread_cond_destroy(&cond);
     memset(&cache, 0, sizeof(struct cache));
+    free(appendBuffer.address);
+    free(writeBuffer.address);
+    free(logfs);
 
     return;
 }
@@ -288,7 +288,7 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
     uint64_t isUpdateCache = 0;
 
     uint64_t alignOff = off - off % BLOCK_SIZE;                                                                    /* 偏移量会小于或等于原始偏移量，最接近的块边界，这确保了读取操作从一个完整的块开始 */
-    size_t alignLen = ((len + off) % BLOCK_SIZE) == 0 ? (len + off) / BLOCK_SIZE : ((len + off) / BLOCK_SIZE) + 1; /* 对齐后块的数量，如果原始长度和偏移量的总和不是块大小的整数倍，则需要多读取一个块以覆盖所有数据*/
+    size_t alignLen = ((len + off) % BLOCK_SIZE) == 0 ? (len + off) / BLOCK_SIZE : ((len + off) / BLOCK_SIZE) + 1; /* 对齐后块的数量，如果原始长度和偏移量的总和不是块大小的整数倍，则需要多读取一个块以覆盖所有数据 */
 
     void *tempBuffer = mallocAlignSpace(alignLen);
     if (tempBuffer == NULL)
@@ -310,7 +310,7 @@ int logfs_read(struct logfs *logfs, void *buf, uint64_t off, size_t len)
         pthread_cond_signal(&cond);
     }
 
-    /* 如果 writeBuffer 中有未处理的数据，它将被写入设备以确保读取操作可以获得最新的数据 */
+    /* 如果 writeBuffer 中有未处理的数据，它将被写入 device 以确保读取操作可以获得最新的数据 */
     if (writeBuffer.utilized != 0)
     {
         uint64_t index = (logfs->head) % RCACHE_BLOCKS;
