@@ -64,7 +64,7 @@ struct cache
 {
     struct cacheBlock
     {
-        char data[BLOCK_SIZE];
+        char data[BLOCK _SIZE];
         uint64_t off; /* 表示数据在缓存中的索引*/
         int isUsed;   /* 用于表示该缓存块是否已被使用 */
     } blocks[RCACHE_BLOCKS];
@@ -244,8 +244,8 @@ void logfs_close(struct logfs *logfs)
     pthread_mutex_lock(&mutex);
 
     /*
-     * 检查 writeBuffer 是否有未处理的数据
-     * 如果有，将它们复制到 appendBuffer，准备写入
+     * check if there are some unhandled data in the writeBuffer
+     * if have, copy them into appendBuffer
      */
     if (writeBuffer.address != NULL && writeBuffer.utilized != 0)
     {
