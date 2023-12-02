@@ -15,27 +15,6 @@
  *   signal()
  */
 
-struct cpuStatus
-{
-	unsigned user;
-	unsigned nice;
-	unsigned system;
-	unsigned idle;
-	unsigned iowait;
-	unsigned irq;
-	unsigned softirq;
-	double util;
-};
-
-struct systemStatus
-{
-	unsigned long ctxt;
-	long btime;
-	unsigned processes;
-	unsigned procs_running;
-	unsigned procs_blocked;
-};
-
 static volatile int done;
 
 static void
@@ -46,13 +25,14 @@ _signal_(int signum)
 	done = 1;
 }
 
-struct cpuStatus cpu_util(const char *s)
+double
+cpu_util(const char *s)
 {
 	static unsigned sum_, vector_[7];
 	unsigned sum, vector[7];
 	const char *p;
+	double util;
 	uint64_t i;
-	struct cpuStatus status;
 
 	/*
 		user
@@ -75,60 +55,126 @@ struct cpuStatus cpu_util(const char *s)
 									 &vector[5],
 									 &vector[6])))
 	{
-		memset(&status, 0, sizeof(status));
-		return status;
+		return 0;
 	}
 	sum = 0.0;
 	for (i = 0; i < ARRAY_SIZE(vector); ++i)
 	{
 		sum += vector[i];
 	}
-	status.util = (1.0 - (vector[3] - vector_[3]) / (double)(sum - sum_)) * 100.0;
-	status.user = vector[0];
-	status.nice = vector[1];
-	status.system = vector[2];
-	status.idle = vector[3];
-	status.iowait = vector[4];
-	status.irq = vector[5];
-	status.softirq = vector[6];
+	util = (1.0 - (vector[3] - vector_[3]) / (double)(sum - sum_)) * 100.0;
 	sum_ = sum;
 	for (i = 0; i < ARRAY_SIZE(vector); ++i)
 	{
 		vector_[i] = vector[i];
 	}
-	return status;
+	return util;
 }
 
-struct systemStatus get_system_status(FILE *file)
+/* calculate memory util */
+double memory_util()
 {
-	struct systemStatus status;
+	const char *const PROC_MEMINFO = "/proc/meminfo";
 	char line[1024];
+	FILE *file;
+	unsigned long memTotal = 0, memFree = 0;
+	double memUsage = 0.0;
 
-	while (fgets(line, sizeof(line), file) != NULL)
+	file = fopen(PROC_MEMINFO, "r");
+	if (!file)
 	{
-		if (sscanf(line, "ctxt %lu", &status.ctxt) == 1)
+		perror("fopen");
+		return -1;
+	}
+
+	while (fgets(line, sizeof(line), file))
+	{
+		if (strncmp(line, "MemTotal:", 9) == 0)
 		{
-			continue;
+			sscanf(line, "MemTotal: %lu kB", &memTotal);
 		}
-		if (sscanf(line, "btime %ld", &status.btime) == 1)
+		if (strncmp(line, "MemFree:", 8) == 0)
 		{
-			continue;
-		}
-		if (sscanf(line, "processes %u", &status.processes) == 1)
-		{
-			continue;
-		}
-		if (sscanf(line, "procs_running %u", &status.procs_running) == 1)
-		{
-			continue;
-		}
-		if (sscanf(line, "procs_blocked %u", &status.procs_blocked) == 1)
-		{
-			continue;
+			sscanf(line, "MemFree: %lu kB", &memFree);
+			break;
 		}
 	}
 
-	return status;
+	fclose(file);
+
+	if (memTotal > 0)
+	{
+		memUsage = 100.0 - ((memFree / (double)memTotal) * 100.0);
+	}
+
+	return memUsage;
+}
+
+/* get tcp count */
+int get_tcp_connections()
+{
+	const char *const TCP = "/proc/net/tcp";
+	FILE *file;
+	char line[1024];
+	int count = 0;
+
+	file = fopen(TCP, "r");
+	if (!file)
+	{
+		perror("fopen");
+		return -1;
+	}
+
+	/* ignore title row */
+	if (fgets(line, sizeof(line), file) == NULL)
+	{
+		fclose(file);
+		return -1;
+	}
+
+	while (fgets(line, sizeof(line), file))
+	{
+		if (strlen(line) > 0)
+		{
+			count++;
+		}
+	}
+
+	fclose(file);
+	return count;
+}
+
+int get_udp_connections()
+{
+	const char *const UDP = "/proc/net/udp";
+	FILE *file;
+	char line[1024];
+	int count = 0;
+
+	file = fopen(UDP, "r");
+	if (!file)
+	{
+		perror("fopen");
+		return -1;
+	}
+
+	/* ignore title row */
+	if (fgets(line, sizeof(line), file) == NULL)
+	{
+		fclose(file);
+		return -1;
+	}
+
+	while (fgets(line, sizeof(line), file))
+	{
+		if (strlen(line) > 0)
+		{
+			count++;
+		}
+	}
+
+	fclose(file);
+	return count;
 }
 
 int main(int argc, char *argv[])
@@ -147,41 +193,20 @@ int main(int argc, char *argv[])
 	}
 	while (!done)
 	{
-		struct cpuStatus cpu_status;
-		struct systemStatus sys_status = {0};
-
 		if (!(file = fopen(PROC_STAT, "r")))
 		{
 			TRACE("fopen()");
 			return -1;
 		}
-		while (fgets(line, sizeof(line), file))
-		{
-			if (strncmp(line, "cpu ", 4) == 0)
-			{
-				cpu_status = cpu_util(line);
-			}
-			else
-			{
-				sys_status = get_system_status(file);
-			}
-		}
 		printf("\033[2J\033[H");
-		printf("CPU: %5.1f%%\n", cpu_status.util);
-		printf("User: %u\n", cpu_status.user);
-		printf("Nice: %u\n", cpu_status.nice);
-		printf("System: %u\n", cpu_status.system);
-		printf("Idle: %u\n", cpu_status.idle);
-		printf("IOwait: %u\n", cpu_status.iowait);
-		printf("IRQ: %u\n", cpu_status.irq);
-		printf("SoftIRQ: %u\n", cpu_status.softirq);
-		printf("ctxt: %lu\n", sys_status.ctxt);
-		printf("btime: %ld\n", sys_status.btime);
-		printf("processes: %u\n", sys_status.processes);
-		printf("procs_running: %u\n", sys_status.procs_running);
-		printf("procs_blocked: %u\n", sys_status.procs_blocked);
-
-		fflush(stdout);
+		if (fgets(line, sizeof(line), file))
+		{
+			printf("CPU Usage: %5.1f%%\n", cpu_util(line));
+			fflush(stdout);
+		}
+		printf("Memory Usage: %.2f%%\n", memory_util());
+		printf("Active TCP Connections: %d\n", get_tcp_connections());
+		printf("Active UDP Connections: %d\n", get_udp_connections());
 		us_sleep(500000);
 		fclose(file);
 	}
