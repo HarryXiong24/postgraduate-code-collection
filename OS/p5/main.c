@@ -17,6 +17,19 @@
 
 static volatile int done;
 
+typedef struct
+{
+	unsigned long received_packets;
+	unsigned long sent_packets;
+} NetworkPackets;
+
+typedef struct
+{
+	char device_name[128];
+	unsigned long read_blocks;
+	unsigned long written_blocks;
+} BlockStats;
+
 static void
 _signal_(int signum)
 {
@@ -110,6 +123,37 @@ double memory_util()
 	return memUsage;
 }
 
+NetworkPackets get_network_packets(const char *interface)
+{
+	const char *const PROC_NET_DEV = "/proc/net/dev";
+	FILE *file;
+	char line[1024];
+	NetworkPackets packets = {0, 0};
+	char network_interface[128];
+
+	file = fopen(PROC_NET_DEV, "r");
+	if (!file)
+	{
+		perror("fopen");
+		return packets;
+	}
+
+	while (fgets(line, sizeof(line), file))
+	{
+		if (sscanf(line, " %127[^:]: %*d %lu %*d %*d %*d %*d %*d %*d %*d %lu",
+							 network_interface, &packets.received_packets, &packets.sent_packets) == 3)
+		{
+			if (strcmp(network_interface, interface) == 0)
+			{
+				break;
+			}
+		}
+	}
+
+	fclose(file);
+	return packets;
+}
+
 /* get tcp count */
 int get_tcp_connections()
 {
@@ -144,6 +188,7 @@ int get_tcp_connections()
 	return count;
 }
 
+/* get udp count */
 int get_udp_connections()
 {
 	const char *const UDP = "/proc/net/udp";
@@ -177,6 +222,34 @@ int get_udp_connections()
 	return count;
 }
 
+void get_all_device_io_stats()
+{
+	const char *const PROC_DISKSTATS = "/proc/diskstats";
+	FILE *file;
+	char line[1024];
+	BlockStats stats;
+
+	file = fopen(PROC_DISKSTATS, "r");
+	if (!file)
+	{
+		perror("fopen");
+		return;
+	}
+
+	printf("Device I/O Statistics:\n");
+	while (fgets(line, sizeof(line), file))
+	{
+		if (sscanf(line, " %*d %*d %127s %*d %*d %lu %*d %*d %*d %lu",
+							 stats.device_name, &stats.read_blocks, &stats.written_blocks) == 3)
+		{
+			printf("%s - Blocks Read: %lu, Blocks Written: %lu\n",
+						 stats.device_name, stats.read_blocks, stats.written_blocks);
+		}
+	}
+
+	fclose(file);
+}
+
 int main(int argc, char *argv[])
 {
 	const char *const PROC_STAT = "/proc/stat";
@@ -205,8 +278,15 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 		}
 		printf("Memory Usage: %.2f%%\n", memory_util());
+
+		printf("Packets Sent: %lu\n", get_network_packets("ens4").sent_packets);
+		printf("Packets Received: %lu\n", get_network_packets("ens4").received_packets);
+
 		printf("Active TCP Connections: %d\n", get_tcp_connections());
 		printf("Active UDP Connections: %d\n", get_udp_connections());
+
+		get_all_device_io_stats();
+
 		us_sleep(500000);
 		fclose(file);
 	}
