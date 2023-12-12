@@ -139,9 +139,9 @@
   "scf.python3.path": "",
   "scf.python2.path": "",
   "editor.codeActionsOnSave": {
-    "source.fixAll": true,
-    "source.fixAll.eslint": true,
-    "source.fixAll.stylelint": true
+    "source.fixAll": "explicit",
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.stylelint": "explicit"
   },
   "vsicons.dontShowNewVersionMessage": true,
   "editor.suggestSelection": "first",
