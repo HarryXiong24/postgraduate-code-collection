@@ -72,7 +72,6 @@ class KNearestNeighbor(object):
         # training point, and store the result in dists[i, j]. You should   #
         # not use a loop over dimension.                                    #
         #####################################################################
-        # 计算第 i 个测试点和第 j 个训练点之间的差异
         diff = X[i, :] - self.X_train[j, :]
         dists[i, j] = np.sqrt(np.sum(np.square(diff)))
         #####################################################################
@@ -159,8 +158,8 @@ class KNearestNeighbor(object):
       # neighbors. Store these labels in closest_y.                           #
       # Hint: Look up the function numpy.argsort.                             #
       #########################################################################
-      closest_idxs = np.argsort(dists[i, :])[:k]
-      closest_y = self.y_train[closest_idxs]
+      closest_element = np.argsort(dists[i, :])[:k]
+      closest_y = self.y_train[closest_element]
       #########################################################################
       # TODO:                                                                 #
       # Now that you have found the labels of the k nearest neighbors, you    #
