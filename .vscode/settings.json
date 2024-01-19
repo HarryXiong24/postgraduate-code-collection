@@ -179,10 +179,5 @@
   "editor.guides.indentation": true,
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8"
-  },
-  "python.formatting.provider": "none",
-  "C_Cpp.errorSquiggles": "disabled"
-  // "devops.accessToken": "",
-  // "devops.accountId": "harryxiong",
-  // "devops.agentPath": "Users/brooklin/agent"
+  }
 }
