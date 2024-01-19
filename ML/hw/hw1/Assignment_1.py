@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # # Problem 1: Python & Data Exploration 
 
 # In[1]:
@@ -21,16 +24,21 @@ print("Number of features: ", features)
 print("Number of data points: ", data_points)
 
 
-# In[3]:
+# In[32]:
 
 
 # 2. For each feature, plot a histogram ( plt.hist ) of the data values
 bins = int(1 + np.log2(data_points)) 
 
-for i in range(0, features):
+plt.figure(figsize=(15, 5)) 
+
+for i in range(features):
+    plt.subplot(1, features, i+1) 
     plt.hist(X[:, i], bins)
     plt.title(f'Feature {i+1}')
-    plt.show()     
+
+plt.tight_layout() 
+plt.show()
 
 
 # In[4]:
@@ -46,7 +54,7 @@ for i in range(4):
     print("Standard Deviation: ", standard_deviation[i])
 
 
-# In[5]:
+# In[35]:
 
 
 # 4. For each pair of features (1,2), (1,3), and (1,4), plot a scatterplot (see plt.plot or plt.scatter ) of the feature values, colored according to their target value (class). (For example, plot all data points with y = 0 as blue, y = 1 as green, etc.) 
@@ -59,17 +67,16 @@ for y in Y:
         colors.append('blue')
     else:
         colors.append('green')
+        
+plt.figure(figsize=(15, 5)) 
 
 for i in range(1, features):
+    plt.subplot(1, features, i+1) 
     plt.scatter(X[:,0], X[:,i], c=colors)
     plt.title(f'Feature (1, {i+1})')
-    plt.show()
     
-for i in range(1, features):
-    plt.plot(X[:,0], X[:,i])
-    plt.title(f'Feature (1, {i+1})')
-    plt.show() 
-    
+plt.tight_layout() 
+plt.show() 
 
 
 # # Problem 2: k-Nearest Neighbor (kNN) exercise
@@ -106,7 +113,7 @@ plt.rcParams['image.cmap'] = 'gray'
 # %autoreload 2
 
 
-# In[7]:
+# In[36]:
 
 
 get_ipython().run_line_magic('cd', 'cs273p/datasets')
@@ -199,7 +206,7 @@ classifier.train(X_train, y_train)
 # 
 # First, open `cs273p/classifiers/k_nearest_neighbor.py` and implement the function `compute_distances_two_loops` that uses a (very inefficient) double loop over all pairs of (test, train) examples and computes the distance matrix one element at a time.
 
-# In[25]:
+# In[14]:
 
 
 # Open cs273p/classifiers/k_nearest_neighbor.py and implement
@@ -325,7 +332,7 @@ print('No loop version took %f seconds' % no_loop_time)
 # 
 # We have implemented the k-Nearest Neighbor classifier but we set the value k = 5 arbitrarily. We will now determine the best value of this hyperparameter with cross-validation.
 
-# In[22]:
+# In[37]:
 
 
 num_folds = 5
@@ -393,7 +400,7 @@ for k in sorted(k_to_accuracies):
         print('k = %d, accuracy = %f' % (k, accuracy))
 
 
-# In[23]:
+# In[ ]:
 
 
 # plot the raw observations
@@ -411,7 +418,7 @@ plt.ylabel('Cross-validation accuracy')
 plt.show()
 
 
-# In[27]:
+# In[ ]:
 
 
 # Based on the cross-validation results above, choose the best value for k,   
