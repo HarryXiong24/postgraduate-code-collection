@@ -1,7 +1,7 @@
 # explanations for member functions are provided in requirements.py
 # each file that uses a cuckoo hash should import it from this file.
 import random as rand
-from typing import List
+from typing import List, Optional
 
 class CuckooHash:
 	def __init__(self, init_size: int):
@@ -11,13 +11,12 @@ class CuckooHash:
 		self.table_size = init_size
 		self.tables = [[None]*init_size for _ in range(2)]
 
-	# hash_func(): takes as input the key and the table id (0 or 1), and returns the hash value for that key in the specified table.
 	def hash_func(self, key: int, table_id: int) -> int:
 		key = int(str(key) + str(self.__num_rehashes) + str(table_id))
 		rand.seed(key)
 		return rand.randint(0, self.table_size-1)
 
-	def get_table_contents(self) -> List[List[int]]:
+	def get_table_contents(self) -> List[List[Optional[int]]]:
 		return self.tables
 
 	# you should *NOT* change any of the existing code above this line
@@ -41,16 +40,16 @@ class CuckooHash:
 				collision_count += 1
 		return False
 
-	# lookup(key): return True if an item with the specified key exists in the cuckoo hash, and False otherwise.
 	def lookup(self, key: int) -> bool:
+		# lookup(key): return True if an item with the specified key exists in the cuckoo hash, and False otherwise.
 		# TODO
 		hash_value1 = self.hash_func(key, 0)
 		hash_value2 = self.hash_func(key, 1)
 		if self.tables[0][hash_value1] == key or self.tables[1][hash_value2] == key:
 			return True
 		
-	# delete(key): delete item with the specified key from the cuckoo hash and replace it with a None entry.
 	def delete(self, key: int) -> None:
+   	# delete(key): delete item with the specified key from the cuckoo hash and replace it with a None entry.
 		# TODO
 		hash_table = [0, 1]
 		for index in hash_table:
@@ -58,8 +57,8 @@ class CuckooHash:
 			if self.tables[index][hash_value] == key:
 				self.tables[index][hash_value] = None
 
-	# rehash(new_table_size): update self.tables such that both tables are of size new_table_size, and all existing elements
 	def rehash(self, new_table_size: int) -> None:
+  	# rehash(new_table_size): update self.tables such that both tables are of size new_table_size, and all existing elements
 		self.__num_rehashes += 1; self.table_size = new_table_size # do not modify this line
 		# TODO
 		temp = self.tables
@@ -68,8 +67,9 @@ class CuckooHash:
 			for j in range(len(temp[i])):
 				if temp[i][j] != None:
 					self.insert(temp[i][j])
-
+    
 	# feel free to define new methods in addition to the above
 	# fill in the definitions of each required member function (above),
 	# and for any additional member functions you define
+
 

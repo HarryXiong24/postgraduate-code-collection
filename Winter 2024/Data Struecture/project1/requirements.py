@@ -1,4 +1,5 @@
 from cuckoo_hash import CuckooHash
+from cuckoo_hash_24 import CuckooHash24
 
 # Please read all of the following before starting your implementation:
 #
@@ -6,11 +7,7 @@ from cuckoo_hash import CuckooHash
 #
 # - You should not include anything outside of standard Python libraries.
 # - Functions should be tested using Python 3.6+ on a Linux environment.
-# - You must submit the requirements.py, cuckoo_hash.py, cuckoo_hash_24.py and project1_tests_24.py files, along with any additional source files that you might create
-#
-# - Note: cuckoo_hash_24.py is not provided. Once you have a working cuckoo hash in cuckoo_hash.py, you will copy  
-# -       cuckoo_hash.py to cuckoo_has_24.py to use as a starting point. More details on cuckoo_hash_24 will be provided at the end of this file.
-#
+# - You must submit the requirements.py, cuckoo_hash.py, and cuckoo_hash_24.py files, along with any additional source files that you might create
 # - The submission should either be the files themselves, or a zip file not containing any directories.
 # - We have provided a project1_tests.py file that contains some simple test cases to give an idea of how we will be running your
 #   code. Please use that file when testing your implementation.
@@ -54,7 +51,7 @@ from cuckoo_hash import CuckooHash
 # A bucket size of 4 is a common value in practice.
 #
 # Hint: You can restructure the cuckoo hash to implement the multi-way set or you can implement 
-# the set associativity without changing the underlying tables. You need to 
+# the set associativity without changing the underlying tables. 
 # 
 # A lookup for key proceeds by computing two hashes of key to find buckets b1 and b2
 # that could be used to store the key, and examining all of the
@@ -69,6 +66,5 @@ from cuckoo_hash import CuckooHash
 # then relocated to its own alternate location, possibly displacing another item, and so on, until a maximum number of
 # displacements is reached. You will use the same method for determining when to rehash.
 #
-# Copy the project1_tests.py to project1_tests_24.py and make modifications to test your 2,4-cuckoo hash.
-
+# Copy the project1_tests.py to project1_tests_24.py and make modifications to test your 2,4-cuckoo
  
