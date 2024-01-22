@@ -31,18 +31,9 @@
   "emmet.includeLanguages": {
     "wxml": "html"
   },
-  // "minapp-vscode.disableAutoConfig": true,
   "search.followSymlinks": false,
   "prettier.semi": true,
   "prettier.singleQuote": true,
-  // "beautify.language": {
-  //   "js": {
-  //     "type": ["javascript", "json", "jsonc"],
-  //     "filename": [".eslintrc", ".jsbeautify"]
-  //   },
-  //   "css": ["css", "scss", "less"],
-  //   "html": ["htm", "html", "vue"]
-  // },
   "projectManager.groupList": true,
   "editor.minimap.enabled": true,
   "editor.wordWrap": "on",
@@ -120,7 +111,6 @@
   // "[xml]": {
   //   "editor.defaultFormatter": "redhat.vscode-xml"
   // },
-  "wxmlConfig.onSaveFormat": true,
   "workbench.iconTheme": "material-icon-theme",
   "prettier.requireConfig": true,
   "editor.wordWrapColumn": 240,
@@ -136,8 +126,6 @@
   "typescript.updateImportsOnFileMove.enabled": "always",
   // "typescript.validate.enable": false,
   // "javascript.validate.enable": false,
-  "scf.python3.path": "",
-  "scf.python2.path": "",
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
     "source.fixAll.eslint": "explicit",
@@ -150,8 +138,6 @@
   "workbench.editorAssociations": {
     "*.html": "default"
   },
-  "java.requirements.JDK11Warning": false,
-  "java.configuration.checkProjectSettingsExclusions": false,
   "workbench.startupEditor": "newUntitledFile",
   "python.languageServer": "Default",
   "gitlens.advanced.blame.customArguments": [],
@@ -159,21 +145,7 @@
     "~": "${workspaceRoot}"
   },
   "go.useLanguageServer": true,
-  "iceworks.materialSources": [],
-  "mssql.connections": [
-    {
-      "server": "{{put-server-name-here}}",
-      "database": "{{put-database-name-here}}",
-      "user": "{{put-username-here}}",
-      "password": "{{put-password-here}}"
-    }
-  ],
   "go.toolsManagement.autoUpdate": true,
-  "appworks.materialSources": [],
-  // "window.zoomLevel": 1,
-  "redhat.telemetry.enabled": true,
-  // "cSpell.userWords": ["tempstats"],
-  "security.workspace.trust.untrustedFiles": "newWindow",
   "git.ignoreLegacyWarning": true,
   "git.autofetch": true,
   "editor.guides.indentation": true,

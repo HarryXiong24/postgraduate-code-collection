@@ -11,6 +11,7 @@ class CuckooHash:
 		self.table_size = init_size
 		self.tables = [[None]*init_size for _ in range(2)]
 
+	# hash_func(): takes as input the key and the table id (0 or 1), and returns the hash value for that key in the specified table.
 	def hash_func(self, key: int, table_id: int) -> int:
 		key = int(str(key) + str(self.__num_rehashes) + str(table_id))
 		rand.seed(key)
@@ -24,21 +25,49 @@ class CuckooHash:
 
 	def insert(self, key: int) -> bool:
 		# TODO
-		pass
+		collision_count = 0
+		current_key = key
+		current_table = 0
+		while collision_count <= self.CYCLE_THRESHOLD:
+			hash_value = self.hash_func(current_key, current_table)
+			if self.tables[current_table][hash_value] == None:
+				self.tables[current_table][hash_value] = current_key
+				return True
+			else:
+				temp = self.tables[current_table][hash_value]
+				self.tables[current_table][hash_value] = current_key
+				current_key = temp
+				current_table = 1 - current_table
+				collision_count += 1
+		return False
 
+	# lookup(key): return True if an item with the specified key exists in the cuckoo hash, and False otherwise.
 	def lookup(self, key: int) -> bool:
 		# TODO
-		pass
+		hash_value1 = self.hash_func(key, 0)
+		hash_value2 = self.hash_func(key, 1)
+		if self.tables[0][hash_value1] == key or self.tables[1][hash_value2] == key:
+			return True
 		
-
+	# delete(key): delete item with the specified key from the cuckoo hash and replace it with a None entry.
 	def delete(self, key: int) -> None:
 		# TODO
-		pass
+		hash_table = [0, 1]
+		for index in hash_table:
+			hash_value = self.hash_func(key, index)
+			if self.tables[index][hash_value] == key:
+				self.tables[index][hash_value] = None
 
+	# rehash(new_table_size): update self.tables such that both tables are of size new_table_size, and all existing elements
 	def rehash(self, new_table_size: int) -> None:
 		self.__num_rehashes += 1; self.table_size = new_table_size # do not modify this line
 		# TODO
-		pass
+		temp = self.tables
+		self.tables = [[None]*new_table_size for _ in range(2)]
+		for i in range(len(temp)):
+			for j in range(len(temp[i])):
+				if temp[i][j] != None:
+					self.insert(temp[i][j])
 
 	# feel free to define new methods in addition to the above
 	# fill in the definitions of each required member function (above),
