@@ -8,7 +8,6 @@ class CuckooHash24:
 		self.__num_rehashes = 0
 		self.bucket_size = 4
 		self.CYCLE_THRESHOLD = 10
-
 		self.table_size = init_size
 		self.tables = [[None]*init_size for _ in range(2)]
 
@@ -40,18 +39,19 @@ class CuckooHash24:
 		collision_count = 0
 		current_key = key
 		current_table = 0
-		while collision_count <= self.CYCLE_THRESHOLD:
+		while collision_count < self.CYCLE_THRESHOLD:
 			hash_value = self.hash_func(current_key, current_table)
-			if self.tables[current_table][hash_value] == None or len(self.tables[current_table][hash_value]) < self.bucket_size:
-				if self.tables[current_table][hash_value] == None:
-					self.tables[current_table][hash_value] = [current_key]
-				else:
-					self.tables[current_table][hash_value].append(current_key)
+			bucket = self.tables[current_table][hash_value]
+			if bucket is None:
+				self.tables[current_table][hash_value] = [current_key]
+				return True
+			elif len(bucket) < self.bucket_size:
+				self.tables[current_table][hash_value].append(current_key)
 				return True
 			else:
 				rand_idx = self.get_rand_idx_from_bucket(hash_value, current_table)
-				temp = self.tables[current_table][hash_value][rand_idx]
-				self.tables[current_table][hash_value][rand_idx] = current_key
+				temp = bucket[rand_idx]
+				bucket[rand_idx] = current_key
 				current_key = temp
 				current_table = 1 - current_table 
 				collision_count += 1
@@ -61,7 +61,7 @@ class CuckooHash24:
 		# TODO
 		hash_value1 = self.hash_func(key, 0)
 		hash_value2 = self.hash_func(key, 1)
-		if (self.tables[0][hash_value1] != None and key in self.tables[0][hash_value1]) or (self.tables[1][hash_value2] != None and key in self.tables[1][hash_value2]):
+		if (self.tables[0][hash_value1] is not None and key in self.tables[0][hash_value1]) or (self.tables[1][hash_value2] is not None and key in self.tables[1][hash_value2]):
 			return True
 		
 
@@ -70,7 +70,7 @@ class CuckooHash24:
 		hash_table = [0, 1]
 		for index in hash_table:
 			hash_value = self.hash_func(key, index)
-			if (self.tables[index][hash_value] != None and key in self.tables[index][hash_value]):
+			if (self.tables[index][hash_value] is not None and key in self.tables[index][hash_value]):
 				self.tables[index][hash_value].remove(key)
 				if len(self.tables[index][hash_value]) == 0:
 					self.tables[index][hash_value] = None
@@ -82,8 +82,9 @@ class CuckooHash24:
 		self.tables = [[None]*new_table_size for _ in range(2)]
 		for i in range(len(temp)):
 			for j in range(len(temp[i])):
-				if temp[i][j] != None:
-					self.insert(temp[i][j])
+				if temp[i][j] is not None:
+					for k in temp[i][j]:
+						self.insert(k)
 
 	# feel free to define new methods in addition to the above
 	# fill in the definitions of each required member function (above),

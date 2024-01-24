@@ -27,7 +27,7 @@ class CuckooHash:
 		collision_count = 0
 		current_key = key
 		current_table = 0
-		while collision_count <= self.CYCLE_THRESHOLD:
+		while collision_count < self.CYCLE_THRESHOLD:
 			hash_value = self.hash_func(current_key, current_table)
 			if self.tables[current_table][hash_value] == None:
 				self.tables[current_table][hash_value] = current_key
