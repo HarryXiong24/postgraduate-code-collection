@@ -19,7 +19,7 @@ def cuckoo_hash_tests():
 		no_cycle = c.insert(num)
 		if no_cycle == False:
 			print("error: cycle should not exist")
-  
+
 	for num in nums[:5]:
 		print("deleting %d" % num)
 		c.delete(num)
@@ -40,24 +40,22 @@ def cuckoo_hash_tests():
 
 	c = requirements.CuckooHash24(table_size)
 	for num in nums:
-		# there should be a cycle when inserting 75
+		# there should be a cycle when inserting 71
 		print("inserting %d" % num)
 		no_cycle = c.insert(num)
 		if no_cycle == False:
 			print("found cycle when inserting %d" %num)
 			break
- 
-	print(c.get_table_contents())
 
-	ref_ans = [[[44, 2, 16, 25], [47, 39, 67, 68], [74, 7, 60, 30], [64, 27, 75, 55], [4, 12, 65, 21], [13, 70, 69, 38], [66, 10, 35, 61], [31, 8, 20, 48], [45, 28, 51, 63], [52, 9, 54, 41]], [[26, 24, 72], [18, 37, 29, 36], [0, 22, 46, 59], [15, 56, 33, 6], [5, 23, 71], [58, 43, 11, 73], [3, 34, 62, 49], [14, 53, 42, 17], [19], [32, 50, 57, 1]]]
+	ref_ans = [[[2, 11, 16, 44], [68, 39, 47, 53], [1, 7, 14, 30], [27, 36, 62, 55], [4, 6, 12, 49], [13, 18, 22, 69], [0, 10, 40, 35], [59, 8, 20, 23], [26, 28, 63, 43], [3, 54, 32, 41]], [[24], [37, 29, 67, 70], [25, 46, 45, 64], [15, 33, 56, 38], [5, 52, 48, 66], [21, 58, 60], [31, 34, 9, 61], [17, 42], [19, 51], [50, 57, 65]]]
 
 	if not c.get_table_contents() == ref_ans:
 		print("test 2 table contents incorrect")
 		return
-
+	
 	c.rehash(20)
 
-	ref_ans = [[[47, 39, 29, 37], [19], [68, 12, 18, 49], [21, 62, 63, 24], [4, 20, 56], [44, 71, 73, 42], [75, 54, 36, 32], [13], [48, 51, 58, 34], [14, 67, 43, 50], [60, 66, 45], [52, 59, 33], [1, 7, 17, 41], [74, 65, 61], [6, 57], [35, 31, 26, 11], [25, 27], [30, 5, 3], [69, 8, 72, 0], [64, 10, 9]], [[28, 55], None, None, None, [23], [15], None, [46], None, [16], None, [70], None, [38], None, None, [22], None, [2], [53]]]
+	ref_ans = [[[39, 47, 37, 38], [19], [68, 12, 49, 18], [62, 22, 21, 24], [4, 40, 20, 56], [44, 42], [36, 54, 32], [13], [48, 58, 34, 51], [16, 50, 55, 23], [45, 66, 60], [59, 33, 52], [2, 17, 1, 7], [61, 65], [6, 57], [11, 35, 26, 31], [27, 25], [30, 3, 5], [69, 0, 8], [10, 64, 9]], [[28], None, None, [14], None, [15], None, [46], None, None, None, [43, 70], None, [63], None, [29, 67], None, None, [41], [53]]]
 
 	if not c.get_table_contents() == ref_ans:
 		print("test 2 table contents incorrect")

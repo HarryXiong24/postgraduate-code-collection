@@ -1,5 +1,6 @@
 # explanations for member functions are provided in requirements.py
 # each file that uses a cuckoo hash should import it from this file.
+import copy
 import random as rand
 from typing import List, Optional
 
@@ -39,7 +40,7 @@ class CuckooHash24:
 		collision_count = 0
 		current_key = key
 		current_table = 0
-		while collision_count < self.CYCLE_THRESHOLD:
+		while collision_count <= self.CYCLE_THRESHOLD:
 			hash_value = self.hash_func(current_key, current_table)
 			bucket = self.tables[current_table][hash_value]
 			if bucket is None:
@@ -64,7 +65,6 @@ class CuckooHash24:
 		if (self.tables[0][hash_value1] is not None and key in self.tables[0][hash_value1]) or (self.tables[1][hash_value2] is not None and key in self.tables[1][hash_value2]):
 			return True
 		
-
 	def delete(self, key: int) -> None:
 		# TODO
 		hash_table = [0, 1]
