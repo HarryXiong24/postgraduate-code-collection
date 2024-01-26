@@ -61,6 +61,37 @@ def cuckoo_hash_tests():
 		print("test 2 table contents incorrect")
 		return
 	print("\ntest 2 table contents correct")
+ 
+	print("\n\nstarting test 3")
+
+	input_size, table_size = 20, 20
+	nums = [i for i in range(input_size*4)]
+
+	c = requirements.CuckooHash24(table_size)
+	for num in nums:
+		# there should be a cycle when inserting 71
+		print("inserting %d" % num)
+		no_cycle = c.insert(num)
+		if no_cycle == False:
+			print("found cycle when inserting %d" %num)
+			break
+ 
+	ref_ans = [[[11, 16, 25, 44], [2, 19, 76], [24, 39, 47], [53, 67, 68], [1, 30, 78], [7, 14, 60, 74], [55, 58, 64, 75], [79, 36, 50, 62], [6, 49, 65], [4, 72, 15, 21], [22, 38, 70], [13, 18, 69], [0, 35, 57, 71], [10, 17, 40, 77], [5, 20, 48, 59], [8, 23, 56, 33], [26, 43, 45, 63], [28, 42, 51], [32], [73, 9, 41, 52]], [None, None, None, [37, 29], None, [46], [12, 54], None, [66], None, None, None, [3, 34], [31, 61], None, [27], None, None, None, None]]
+
+ 
+	if not c.get_table_contents() == ref_ans:
+		print("test 3 table contents incorrect")
+		return
+	
+	c.rehash(20)
+
+	ref_ans = [[[39, 47, 38, 29], [19, 78], [68, 49, 18, 12], [24, 62, 63, 22], [4, 40, 20, 56], [44, 71, 42, 73], [75, 36, 32, 54], [13], [58, 48, 51, 34], [16, 43, 14, 55], [76, 60, 45, 66], [59, 33, 52], [2, 46, 1, 7], [74, 65, 61], [6, 57], [11, 35, 26, 31], [25, 27], [30, 79, 5, 3], [72, 69, 0, 8], [64, 10, 9]], [[28, 37], None, None, None, [23], [15], [50], None, None, None, None, [21, 70, 77], None, None, None, [67, 17], None, None, [41], [53]]]
+
+	if not c.get_table_contents() == ref_ans:
+		print("test 3 table contents incorrect")
+		return
+
+	print("\ntest 3 table contents correct")
 
 if __name__ == '__main__':
 	cuckoo_hash_tests()

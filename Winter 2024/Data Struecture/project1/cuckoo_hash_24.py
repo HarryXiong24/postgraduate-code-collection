@@ -79,12 +79,16 @@ class CuckooHash24:
 	def rehash(self, new_table_size: int) -> None:
 		self.__num_rehashes += 1; self.table_size = new_table_size # do not modify this line
 		# TODO
-		temp = self.tables
+		old_items = []
+		for i in range(len(self.tables)):
+			for j in range(len(self.tables[i])):
+				if self.tables[i][j] is not None:
+					old_items.append(self.tables[i][j])
+
 		self.tables = [[None]*new_table_size for _ in range(2)]
-		for i in range(len(temp)):
-			for j in range(len(temp[i])):
-				if temp[i][j] is not None:
-					for k in temp[i][j]:
+		for item in old_items:
+				if item is not None:
+					for k in item:
 						self.insert(k)
 
 	# feel free to define new methods in addition to the above

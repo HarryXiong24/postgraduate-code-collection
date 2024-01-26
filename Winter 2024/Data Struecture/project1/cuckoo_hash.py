@@ -27,7 +27,7 @@ class CuckooHash:
 		collision_count = 0
 		current_key = key
 		current_table = 0
-		while collision_count < self.CYCLE_THRESHOLD:
+		while collision_count <= self.CYCLE_THRESHOLD:
 			hash_value = self.hash_func(current_key, current_table)
 			if self.tables[current_table][hash_value] == None:
 				self.tables[current_table][hash_value] = current_key
@@ -62,12 +62,15 @@ class CuckooHash:
   	# rehash(new_table_size): update self.tables such that both tables are of size new_table_size, and all existing elements
 		self.__num_rehashes += 1; self.table_size = new_table_size # do not modify this line
 		# TODO
-		temp = self.tables
+		old_items = []
+		for i in range(len(self.tables)):
+			for j in range(len(self.tables[i])):
+				if self.tables[i][j] is not None:
+					old_items.append(self.tables[i][j])
+          
 		self.tables = [[None]*new_table_size for _ in range(2)]
-		for i in range(len(temp)):
-			for j in range(len(temp[i])):
-				if temp[i][j] != None:
-					self.insert(temp[i][j])
+		for item in old_items:
+			self.insert(item)
     
 	# feel free to define new methods in addition to the above
 	# fill in the definitions of each required member function (above),
