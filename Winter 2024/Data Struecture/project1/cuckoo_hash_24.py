@@ -64,6 +64,7 @@ class CuckooHash24:
 		hash_value2 = self.hash_func(key, 1)
 		if (self.tables[0][hash_value1] is not None and key in self.tables[0][hash_value1]) or (self.tables[1][hash_value2] is not None and key in self.tables[1][hash_value2]):
 			return True
+		return False
 		
 	def delete(self, key: int) -> None:
 		# TODO

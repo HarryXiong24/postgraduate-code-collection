@@ -47,6 +47,7 @@ class CuckooHash:
 		hash_value2 = self.hash_func(key, 1)
 		if self.tables[0][hash_value1] == key or self.tables[1][hash_value2] == key:
 			return True
+		return False
 		
 	def delete(self, key: int) -> None:
    	# delete(key): delete item with the specified key from the cuckoo hash and replace it with a None entry.
