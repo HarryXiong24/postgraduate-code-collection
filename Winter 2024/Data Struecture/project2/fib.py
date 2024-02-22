@@ -77,36 +77,34 @@ class FibHeap:
     def decrease_priority(self, node: FibNode, new_val: int) -> None:
         '''
         decreases the priority of the specified node to the new value. you can assume that the new value is less than the current value and that it will not decrease to a pre-existing priority in the heap.
-        '''            
+        '''  
+        node.val = new_val          
         if node in self.roots:
-            node.val = new_val
             if node.val < self.min.val:
                 self.min = node
             return 
+  
+        self.promote(node)
         
-        if node.parent is not None:
-            node.val = new_val
-            if node in node.parent.children:
-                node.parent.children.remove(node)
-            self.roots.append(node)
-            parent = node.parent
-            if not parent.flag:
-                parent.flag = True
-            else:
-                grandparent = parent.parent
-                if grandparent is not None:
-                    if parent in grandparent.children:
-                        grandparent.children.remove(parent)
-                    self.roots.append(parent)
-                    grandparent.flag = True
-                    self.decrease_priority(grandparent, grandparent.val) # recursive call
-                else:
-                    self.roots.append(parent)
-                    parent.flag = False
-            parent = None
-
         # update the minimum node
         self.update_min_node()
+        
+    def promote(self, node: FibNode) -> None:
+        '''
+        promote the node to the root list
+        '''
+        if node not in self.roots:
+            parent = node.parent
+            if parent is not None:
+                parent.children.remove(node)
+                node.parent = None
+                self.roots.append(node)
+                if parent.flag:
+                    self.promote(parent)  # Promote the parent if it has already lost a child.
+                else:
+                    if parent not in self.roots:  # Only set the flag if the parent is not a root.
+                        parent.flag = True
+	
         
     def rebuild(self):
         '''

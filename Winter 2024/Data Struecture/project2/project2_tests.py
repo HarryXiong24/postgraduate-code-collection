@@ -41,7 +41,7 @@ def fib_heap_tests():
 	if fib.find_min().val == 2:
 		print("error: min val should have changed")
 		return
-	
+
 	fib.decrease_priority(node, 1)
 	if fib.find_min().val != 1:
 		print("min val should be 1")
