@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import List
 
+
 class FibNode:
     def __init__(self, val: int):
         self.val: int = val
@@ -84,7 +85,7 @@ class FibHeap:
                 self.min = node
             return 
         
-        while node.parent is not None:
+        if node.parent is not None:
             node.val = new_val
             if node in node.parent.children:
                 node.parent.children.remove(node)
@@ -99,8 +100,7 @@ class FibHeap:
                         grandparent.children.remove(parent)
                     self.roots.append(parent)
                     grandparent.flag = True
-                    node = grandparent  # Update the node for the next iteration
-                    new_val = grandparent.val  # Update the new value for the next iteration
+                    self.decrease_priority(grandparent, grandparent.val) # recursive call
                 else:
                     self.roots.append(parent)
                     parent.flag = False
@@ -114,21 +114,21 @@ class FibHeap:
         rebuild the roots of the heap so that no two roots have the same degree.
         '''
         table: dict[int, List[FibNode]] = {}
+        
         while True:
-            is_rebuild = False
             for root in self.roots:
                 degree = len(root.children)
                 if degree in table:
                     table[degree].append(root)
                 else:
                     table[degree] = [root]
-                
-    
+                    
+            is_rebuild = False
             for degree, roots_with_same_degree in table.items():
                 if len(roots_with_same_degree) >= 2:
                     is_rebuild = True
                     break
-            
+                
             if not is_rebuild:
                 return 
             else:
@@ -148,10 +148,10 @@ class FibHeap:
                             root1.parent = root2
                             if root1 in self.roots: 
                                 self.roots.remove(root1)
-                            self.roots.append(root2)     
+                            self.roots.append(root2)
                 
     def update_min_node(self):
-        if self.roots:
+        if self.roots and len(self.roots) > 0:
             self.min = min(self.roots, key=lambda x: x.val)
         else:
             self.min = None
