@@ -31,7 +31,6 @@ class FibHeap:
         # you may define any additional member variables you need
         self.roots: List[FibNode] = []
         self.min = None        
-        pass
     
     def get_roots(self) -> list:
         '''
@@ -56,7 +55,7 @@ class FibHeap:
         '''
         deletes the minimum node from the Fibonacci heap. you can assume that the heap is non-empty when this is called.
         '''
-        if self.min not in self.roots:
+        if not self.roots or self.min is None or self.min not in self.roots:
             return
         
         self.roots += self.min.children
@@ -151,11 +150,11 @@ class FibHeap:
                             self.roots.append(root2)
                 
     def update_min_node(self):
-        if self.roots and len(self.roots) > 0:
-            self.min = min(self.roots, key=lambda x: x.val)
-        else:
+        if not self.roots or len(self.roots) == 0:
             self.min = None
-    
+        else:
+            self.min = min(self.roots, key=lambda x: x.val)
+            
     def print_fib_node(self, obj: List[FibNode]) -> None:
         if isinstance(obj, list):
             for item in obj:
