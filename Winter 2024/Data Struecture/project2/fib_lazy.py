@@ -47,26 +47,39 @@ class FibHeapLazy:
             return
 
         # remove the min node from the root l
-        min_node = self.find_min_lazy()
-        min_node.isAvailable = True  # Mark the minimum node as deleted
+        if not self.min.isAvailable:
+            self.min.isAvailable = True
+        else:
+            self.min = self.find_min_lazy()
+            self.min.isAvailable = True
+
         self.size -= 1
 
     def find_min_lazy(self) -> FibNodeLazy:
-        if self.min is None:
-            self.rebuild_heap()
-        return self.min
-
-    def rebuild_heap(self) -> None:
-        new_roots = []
-        new_min = None
         for root in self.roots:
-            self.destroy_vacant_nodes(root)  # 销毁所有空闲节点
-            if not root.isAvailable:  # 如果根节点非空闲，则将其添加到新根节点列表中
-                new_roots.append(root)
-                if new_min is None or root.val < new_min.val:
-                    new_min = root
-        self.roots = new_roots
-        self.min = new_min  # 更新最小节点
+            self.destroy_vacant_nodes(root)
+
+        new_roots = self.roots.copy()
+        record = [None] * (self.size + 1)
+        # Combine trees with the same degree
+        while len(new_roots) > 0:
+            current = new_roots.pop()
+            childCount = len(current.children)
+            if record[childCount] is None:
+                record[childCount] = current
+            else:
+                combine_tree = self.combine(current, record[childCount])
+                new_roots.append(combine_tree)
+                record[childCount] = None
+
+        # Update the minimum node
+        self.roots = []
+        for item in record:
+            if item is not None:
+                self.roots.append(item)
+
+        self.update_min_node()
+        return self.min
 
     def destroy_vacant_nodes(self, node: FibNodeLazy) -> None:
         if node is None or not node.isAvailable:
@@ -74,15 +87,11 @@ class FibHeapLazy:
 
         if node in self.roots:
             self.roots.remove(node)
-        else:
-            if node.parent:
-                node.parent.children.remove(node)
-                node.parent.children = [
-                    child for child in node.parent.children if not child.isAvailable
-                ]
 
-        for child in node.parent.children:
+        for child in node.children:
             if child is not None:
+                self.roots.append(child)
+            else:
                 self.destroy_vacant_nodes(child)
 
     def decrease_priority(self, node: FibNodeLazy, new_val: int) -> None:
@@ -96,6 +105,19 @@ class FibHeapLazy:
 
         # update the minimum node
         self.update_min_node()
+
+    def combine(self, root1: FibNodeLazy, root2: FibNodeLazy) -> FibNodeLazy:
+        """
+        Combine two trees into a new tree.
+        """
+        if root1.val < root2.val:
+            root1.children.append(root2)
+            root2.parent = root1
+            return root1
+        else:
+            root2.children.append(root1)
+            root1.parent = root2
+            return root2
 
     def promote(self, node: FibNodeLazy) -> None:
         """
