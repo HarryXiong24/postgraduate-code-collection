@@ -30,6 +30,7 @@ class FibHeap:
         '''
         # you may define any additional member variables you need
         self.roots: List[FibNode] = []
+        self.size: int = 0
         self.min = None        
     
     def get_roots(self) -> list:
@@ -48,6 +49,7 @@ class FibHeap:
         self.roots.append(new_node)
         if self.min is None or new_node.val < self.min.val:
             self.min = new_node
+        self.size += 1
         return new_node
 
         
@@ -55,17 +57,33 @@ class FibHeap:
         '''
         deletes the minimum node from the Fibonacci heap. you can assume that the heap is non-empty when this is called.
         '''
-        if not self.roots or self.min is None or self.min not in self.roots:
+        if not self.roots or self.min is None:
             return
-        
-        self.roots += self.min.children
-        for child in self.min.children:
-            child.parent = None
-        self.roots.remove(self.min)
-                           
-        self.rebuild()
 
-        # update the minimum node
+        min_node = self.find_min()
+        self.roots.remove(min_node)
+        for child in min_node.children:
+            child.parent = None
+        
+        new_roots = self.roots.copy() + min_node.children
+        record = [None] * (self.size + 1)
+        # Combine trees with the same degree
+        while len(new_roots) > 0:
+            current = new_roots.pop()
+            childCount = len(current.children)
+            if record[childCount] is None:
+                record[childCount] = current
+            else:
+                combine_tree = self.combine(current, record[childCount])
+                new_roots.append(combine_tree)
+                record[childCount] = None
+          
+        # Update the minimum node
+        self.roots = []
+        for item in record:
+            if item is not None:
+                self.roots.append(item)
+        self.size -= 1
         self.update_min_node()
 
     def find_min(self) -> FibNode:
@@ -89,6 +107,19 @@ class FibHeap:
         # update the minimum node
         self.update_min_node()
         
+    def combine(self, root1: FibNode, root2: FibNode) -> FibNode:
+        '''
+        Combine two trees into a new tree.
+        '''
+        if root1.val < root2.val:
+            root1.children.append(root2)
+            root2.parent = root1
+            return root1
+        else:
+            root2.children.append(root1)
+            root1.parent = root2
+            return root2
+        
     def promote(self, node: FibNode) -> None:
         '''
         promote the node to the root list
@@ -104,48 +135,6 @@ class FibHeap:
                 else:
                     if parent not in self.roots:  # Only set the flag if the parent is not a root.
                         parent.flag = True
-	
-        
-    def rebuild(self):
-        '''
-        rebuild the roots of the heap so that no two roots have the same degree.
-        '''
-        table: dict[int, List[FibNode]] = {}
-        
-        while True:
-            for root in self.roots:
-                degree = len(root.children)
-                if degree in table:
-                    table[degree].append(root)
-                else:
-                    table[degree] = [root]
-                    
-            is_rebuild = False
-            for degree, roots_with_same_degree in table.items():
-                if len(roots_with_same_degree) >= 2:
-                    is_rebuild = True
-                    break
-                
-            if not is_rebuild:
-                return 
-            else:
-                self.roots = []
-                for degree, roots_with_same_degree in table.items():
-                    while len(roots_with_same_degree) >= 2:
-                        root1 = roots_with_same_degree.pop()
-                        root2 = roots_with_same_degree.pop()
-                        if root1.val < root2.val:
-                            root1.children.append(root2)
-                            root2.parent = root1
-                            if root2 in self.roots:
-                                self.roots.remove(root2)
-                            self.roots.append(root1)
-                        else:
-                            root2.children.append(root1)
-                            root1.parent = root2
-                            if root1 in self.roots: 
-                                self.roots.remove(root1)
-                            self.roots.append(root2)
                 
     def update_min_node(self):
         if not self.roots or len(self.roots) == 0:

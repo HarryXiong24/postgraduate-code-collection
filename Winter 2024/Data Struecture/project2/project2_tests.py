@@ -28,7 +28,7 @@ def fib_heap_tests():
 	if [x.val for x in fib.get_roots()] != [5, 7, 12, 14, 2]:
 		print("fib heap contents incorrect")
 		return
-
+ 
 	if fib.find_min().val != 2:
 		print("min value incorrect")
 		return

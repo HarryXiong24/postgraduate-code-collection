@@ -25,7 +25,8 @@ class FibHeapLazy:
     def __init__(self):
         # you may define any additional member variables you need
         self.roots: List[FibNodeLazy] = []
-        self.min = None       
+        self.size: int = 0
+        self.min = None      
 
     def get_roots(self) -> list:
         return self.roots
@@ -35,20 +36,37 @@ class FibHeapLazy:
         self.roots.append(new_node)
         if self.min is None or new_node.val < self.min.val:
             self.min = new_node
+        self.size += 1
         return new_node
     
     def delete_min_lazy(self) -> None:
-        if not self.roots or self.min is None or self.min not in self.roots:
+        if not self.roots or self.min is None:
             return
-        
-        self.roots += self.min.children
-        for child in self.min.children:
-            child.parent = None
-        self.roots.remove(self.min)
-                           
-        self.rebuild()
 
-        # update the minimum node
+        min_node = self.find_min_lazy()
+        self.roots.remove(min_node)
+        for child in min_node.children:
+            child.parent = None
+        
+        new_roots = self.roots.copy() + min_node.children
+        record = [None] * (self.size + 1)
+        # Combine trees with the same degree
+        while len(new_roots) > 0:
+            current = new_roots.pop()
+            childCount = len(current.children)
+            if record[childCount] is None:
+                record[childCount] = current
+            else:
+                combine_tree = self.combine(current, record[childCount])
+                new_roots.append(combine_tree)
+                record[childCount] = None
+          
+        # Update the minimum node
+        self.roots = []
+        for item in record:
+            if item is not None:
+                self.roots.append(item)
+        self.size -= 1
         self.update_min_node()
         
 
@@ -56,76 +74,45 @@ class FibHeapLazy:
         return self.min
 
     def decrease_priority(self, node: FibNodeLazy, new_val: int) -> None:
+        node.val = new_val          
         if node in self.roots:
-            node.val = new_val
             if node.val < self.min.val:
                 self.min = node
             return 
+  
+        self.promote(node)
         
-        if node.parent is not None:
-            node.val = new_val
-            if node in node.parent.children:
-                node.parent.children.remove(node)
-            self.roots.append(node)
-            parent = node.parent
-            if not parent.flag:
-                parent.flag = True
-            else:
-                grandparent = parent.parent
-                if grandparent is not None:
-                    if parent in grandparent.children:
-                        grandparent.children.remove(parent)
-                    self.roots.append(parent)
-                    grandparent.flag = True
-                    self.decrease_priority(grandparent, grandparent.val) # recursive call
-                else:
-                    self.roots.append(parent)
-                    parent.flag = False
-            parent = None
-
         # update the minimum node
         self.update_min_node()
         
-    def rebuild(self):
+    def combine(self, root1: FibNodeLazy, root2: FibNodeLazy) -> FibNodeLazy:
         '''
-        rebuild the roots of the heap so that no two roots have the same degree.
+        Combine two trees into a new tree.
         '''
-        table: dict[int, List[FibNodeLazy]] = {}
+        if root1.val < root2.val:
+            root1.children.append(root2)
+            root2.parent = root1
+            return root1
+        else:
+            root2.children.append(root1)
+            root1.parent = root2
+            return root2
         
-        while True:
-            for root in self.roots:
-                degree = len(root.children)
-                if degree in table:
-                    table[degree].append(root)
+    def promote(self, node: FibNodeLazy) -> None:
+        '''
+        promote the node to the root list
+        '''
+        if node not in self.roots:
+            parent = node.parent
+            if parent is not None:
+                parent.children.remove(node)
+                node.parent = None
+                self.roots.append(node)
+                if parent.flag:
+                    self.promote(parent)  # Promote the parent if it has already lost a child.
                 else:
-                    table[degree] = [root]
-                    
-            is_rebuild = False
-            for degree, roots_with_same_degree in table.items():
-                if len(roots_with_same_degree) >= 2:
-                    is_rebuild = True
-                    break
-                
-            if not is_rebuild:
-                return 
-            else:
-                self.roots = []
-                for degree, roots_with_same_degree in table.items():
-                    while len(roots_with_same_degree) >= 2:
-                        root1 = roots_with_same_degree.pop()
-                        root2 = roots_with_same_degree.pop()
-                        if root1.val < root2.val:
-                            root1.children.append(root2)
-                            root2.parent = root1
-                            if root2 in self.roots:
-                                self.roots.remove(root2)
-                            self.roots.append(root1)
-                        else:
-                            root2.children.append(root1)
-                            root1.parent = root2
-                            if root1 in self.roots: 
-                                self.roots.remove(root1)
-                            self.roots.append(root2)
+                    if parent not in self.roots:  # Only set the flag if the parent is not a root.
+                        parent.flag = True
                 
     def update_min_node(self):
         if not self.roots or len(self.roots) == 0:
