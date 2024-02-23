@@ -75,9 +75,13 @@ class FibHeapLazy:
         if node in self.roots:
             self.roots.remove(node)
         else:
-            node.parent.children.remove(node)
+            if node.parent:
+                node.parent.children.remove(node)
+                node.parent.children = [
+                    child for child in node.parent.children if not child.isAvailable
+                ]
 
-        for child in node.children:
+        for child in node.parent.children:
             if child is not None:
                 self.destroy_vacant_nodes(child)
 
