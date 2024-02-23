@@ -18,7 +18,7 @@ def is_delete_min_correct(roots):
 
 
 def fib_heap_tests():
-    fib = requirements.FibHeap()
+    fib = requirements.FibHeapLazy()
     # uncomment the following line to test FibHeapLazy. The outputs should stay the same.
     # fib = requirements.FibHeapLazy()
     fib.insert(5)
@@ -31,21 +31,23 @@ def fib_heap_tests():
         print("fib heap contents incorrect")
         return
 
-    if fib.find_min().val != 2:
+    if fib.find_min_lazy().val != 2:
         print("min value incorrect")
         return
 
-    fib.delete_min()
+    fib.delete_min_lazy()
     if not is_delete_min_correct(fib.get_roots()):
         print("delete_min incorrect")
+        for item in fib.get_roots():
+            print(item.val, len(item.children))
         return
 
-    if fib.find_min().val == 2:
+    if fib.find_min_lazy().val == 2:
         print("error: min val should have changed")
         return
 
     fib.decrease_priority(node, 1)
-    if fib.find_min().val != 1:
+    if fib.find_min_lazy().val != 1:
         print("min val should be 1")
         return
 
