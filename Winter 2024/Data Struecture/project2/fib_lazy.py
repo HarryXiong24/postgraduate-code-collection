@@ -38,7 +38,7 @@ class FibHeapLazy:
         new_node = FibNodeLazy(val)
         self.roots.append(new_node)
         self.size += 1
-        self = self.find_min_lazy()
+        self.min = self.find_min_lazy()
         return new_node
 
     def delete_min_lazy(self) -> None:
