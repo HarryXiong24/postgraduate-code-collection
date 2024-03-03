@@ -3,7 +3,7 @@
 
 import json
 import random
-from typing import List, Optional, TypeVar
+from typing import Optional, TypeVar
 
 KeyType = TypeVar("KeyType")
 ValType = TypeVar("ValType")
@@ -28,9 +28,9 @@ class ZipTree:
 
     @staticmethod
     def get_random_rank() -> int:
-        rank = 1
-        # 50% chance to increase rank, 50% chance to stop
-        while random.randint(0, 1) == 0:
+        "returns a random node rank, chosen independently from a geometric distribution of mean 1"
+        rank = 0
+        while random.randint(0, 1) == 0:  # Assuming 0 is tails and 1 is heads
             rank += 1
         return rank
 
@@ -40,73 +40,72 @@ class ZipTree:
 
         new_node: TreeNode = TreeNode(key, val, rank)
 
-        if not self.root:
-            self.root = new_node
-            self.size += 1
-            print(self.root)
-            return
+        self.root = self._insert_helper(new_node, self.root)
+        self.size += 1
 
-        parent = None
-        current = self.root
-        left_path: List[TreeNode] = []
-        right_path: List[TreeNode] = []
+    def _insert_helper(self, current: TreeNode, root: TreeNode) -> TreeNode:
+        if not root:
+            return current
 
-        while current:
-            if rank > current.rank or (rank == current.rank and key < current.key):
-                if parent:
-                    if parent.key > key:
-                        parent.left = new_node
-                    else:
-                        parent.right = new_node
+        if current.key < root.key:  # to left
+            # if current is the new root
+            if self._insert_helper(current, root.left) == current:
+                if current.rank < root.rank:
+                    root.left = current
                 else:
-                    self.root = new_node
-
-                new_node.left = current if key < current.key else None
-                new_node.right = current if key > current.key else None
-
-                self._find_path(current, key, left_path, right_path)
-
-                new_node.left = self._build_tree_from_path(left_path, key, True)
-                new_node.right = self._build_tree_from_path(right_path, key, False)
-                self.size += 1
-                print(self.root)
-                return
-
-            parent = current
-            if key < current.key:
-                current = current.left
-            else:
-                current = current.right
-
-    def _find_path(
-        self,
-        start: TreeNode,
-        key: KeyType,
-        left_path: List[TreeNode],
-        right_path: List[TreeNode],
-    ) -> List[TreeNode]:
-        current = start
-        while current:
-            if key < current.key:
-                left_path.append(current)
-                current = current.left
-            else:
-                right_path.append(current)
-                current = current.right
-
-    def _build_tree_from_path(self, path, key, is_left):
-        root = None
-        for node in reversed(path):
-            if is_left and node.key > key:
-                node.left = root
-                root = node
-            elif not is_left and node.key <= key:
-                node.right = root
-                root = node
+                    root.left = current.right
+                    current.right = root
+                    return current
+        else:  # to right
+            # if current is the new root
+            if self._insert_helper(current, root.right) == current:
+                if current.rank <= root.rank:
+                    root.right = current
+                else:
+                    root.right = current.left
+                    current.left = root
+                    return current
         return root
 
     def remove(self, key: KeyType):
-        pass
+        current = None
+        temp = self.root
+        while temp:
+            if temp.key == key:
+                current = temp
+                break
+            temp = temp.left if key < temp.key else temp.right
+        if current:
+            self.root = self._remove_helper(current, self.root)
+            self.size -= 1
+
+    def _remove_helper(self, current: KeyType, root: TreeNode) -> Optional[TreeNode]:
+        if current.key == root.key:
+            return self._zip(root.left, root.right)
+        if current.key < root.key:
+            if current.key == root.left.key:
+                root.left = self._zip(root.left.left, root.left.right)
+            else:
+                self._remove_helper(current, root.left)
+        else:
+            if current.key == root.right.key:
+                root.right = self._zip(root.right.left, root.right.right)
+            else:
+                self._remove_helper(current, root.right)
+        return root
+
+    def _zip(self, x: TreeNode, y: TreeNode) -> TreeNode:
+        """zips two trees together"""
+        if x is None:
+            return y
+        if y is None:
+            return x
+        if x.rank < y.rank:
+            y.left = self._zip(x, y.left)
+            return y
+        else:
+            x.right = self._zip(x.right, y)
+            return x
 
     def find(self, key: KeyType) -> ValType:
         current = self.root
@@ -114,7 +113,6 @@ class ZipTree:
             if current.key == key:
                 return current.val
             current = current.left if key < current.key else current.right
-        print("find", self.root)
         return None
 
     def get_size(self) -> int:
@@ -134,11 +132,24 @@ class ZipTree:
                 if node.right:
                     queue.append(node.right)
             height += 1
-        return height
+        return height - 1
+
+    def _get_height_helper(self, root: TreeNode) -> int:
+        if not root:
+            return 0
+        return 1 + max(
+            self._get_height_helper(root.left), self._get_height_helper(root.right)
+        )
 
     def get_depth(self, key: KeyType):
         """returns the depth of the item with parameter key. you can assume that the item exists in the tree."""
-        pass
+        depth = 0
+        current = self.root
+        while current:
+            if current.key == key:
+                return depth
+            current = current.left if key < current.key else current.right
+            depth += 1
 
 
 # feel free to define new classes/methods in addition to the above
