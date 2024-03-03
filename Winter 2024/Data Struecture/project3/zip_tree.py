@@ -143,6 +143,9 @@ class ZipTree:
             current = current.left if key < current.key else current.right
             depth += 1
 
+    def get_tree(self):
+        return self.root
+
 
 # feel free to define new classes/methods in addition to the above
 # fill in the definitions of each required member function (above),

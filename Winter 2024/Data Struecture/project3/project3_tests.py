@@ -168,4 +168,4 @@ def skip_list_tests():
 
 if __name__ == "__main__":
     zip_tree_tests()
-    # skip_list_tests()
+    skip_list_tests()
