@@ -1,7 +1,6 @@
 # explanations for member functions are provided in requirements.py
 # each file that uses a Zip Tree should import it from this file.
 
-import json
 import random
 from typing import Optional, TypeVar
 
@@ -133,13 +132,6 @@ class ZipTree:
                     queue.append(node.right)
             height += 1
         return height - 1
-
-    def _get_height_helper(self, root: TreeNode) -> int:
-        if not root:
-            return 0
-        return 1 + max(
-            self._get_height_helper(root.left), self._get_height_helper(root.right)
-        )
 
     def get_depth(self, key: KeyType):
         """returns the depth of the item with parameter key. you can assume that the item exists in the tree."""
