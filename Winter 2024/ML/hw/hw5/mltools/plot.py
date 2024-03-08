@@ -73,7 +73,7 @@ def plotClassify2D(learner, X, Y, pre=lambda x: x, axis=None, nGrid=128, **kwarg
     cvals = (classes - min(classes)) / (max(classes) - min(classes) + 1e-100)
     for i, c in enumerate(classes):
         axis.plot(X[Y == c, 0], X[Y == c, 1], "ko", color=cmap(cvals[i]), **kwargs)
-    axis.axis(ax)
+    # axis.axis(ax)
     # axis.hold(hld)
 
 
