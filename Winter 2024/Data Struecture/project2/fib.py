@@ -67,6 +67,7 @@ class FibHeap:
 
         new_roots = self.roots.copy() + min_node.children
         record = [None] * (self.size + 1)
+
         # Combine trees with the same degree
         while len(new_roots) > 0:
             current = new_roots.pop()
