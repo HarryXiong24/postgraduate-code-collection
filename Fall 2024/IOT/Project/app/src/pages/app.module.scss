@@ -1,0 +1,48 @@
+.home {
+  height: 100vh;
+  position: relative;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+
+  .header {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    background-color: #a03cf7;
+    height: 4rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: white;
+    }
+  }
+
+  .tab {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    font-weight: 600;
+    height: 2rem;
+  }
+
+  .main {
+    height: 100%;
+    overflow-y: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .footer {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}

@@ -1,0 +1,2 @@
+GET http://localhost:8080/handle-status?isOpen=0
+Content-Type: application/json
